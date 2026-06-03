@@ -1,0 +1,196 @@
+/* ---------------------- ПОДКЛЮЧЕНИЕ ШРИФТОВ ---------------------- */
+@font-face {
+  font-family: 'Prosto One';
+  src: url('../fonts/prosto-one.woff2') format('woff2'),
+       url('../fonts/prosto-one.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* ---------------------- ПЕРЕМЕННЫЕ ---------------------- */
+:root {
+  --bg-dark: #0a0a12;
+  --text-gray: #b0b0c0;
+  --text-white: #ffffff;
+  --accent-orange: #e9672b;
+  --green-dark: #565d33;
+  --font-main: 'Inter', sans-serif;
+  --font-heading: 'Prosto One', sans-serif;
+}
+
+/* ---------------------- общие стили ---------------------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-dark);
+  font-family: var(--font-main);
+  color: var(--text-white);
+  line-height: 1.4;
+  overflow-x: hidden;
+}
+
+.container {
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+
+/* ---------------------- ОСНОВНОЙ КОНТЕНТ ---------------------- */
+main{
+    padding: 0 20px;
+}
+
+.hero-text {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.hero-title {
+  font-family: var(--font-heading);
+  font-size: 48px;
+  font-weight: normal;
+  color: var(--text-white);
+  margin-bottom: 16px;
+}
+
+.hero-subtitle {
+  font-family: var(--font-main);
+  font-size: 18px;
+  color: var(--text-gray);
+}
+
+/* ---------------------- СЕТКА КАРТОЧЕК ---------------------- */
+.quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
+}
+
+/* ---------------------- КАРТОЧКА ВИКТОРИНЫ ---------------------- */
+.quiz-card {
+  border: 2px solid var(--accent-orange);
+  border-radius: 15px;
+  padding: 28px 24px;
+  transition: all 0.25s ease;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.quiz-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-orange);
+  box-shadow: 0 12px 24px rgba(233, 103, 43, 0.15);
+}
+
+/* Грид для карточки */
+.quiz-card-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: start;
+}
+
+/* заголовок, мета, описание */
+.quiz-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-title {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: normal;
+  color: var(--accent-orange);
+  margin: 0;
+}
+
+.quiz-meta {
+  font-family: var(--font-main);
+  font-size: 14px;
+  color: var(--text-gray);
+  letter-spacing: 0.3px;
+}
+
+.quiz-description {
+  font-family: var(--font-main);
+  font-size: 16px;
+  color: var(--text-white);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* рейтинг и статистика  */
+.quiz-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: right;
+}
+
+.quiz-rating {
+  font-family: var(--font-main);
+  font-size: 15px;
+  color: var(--text-gray);
+  white-space: nowrap;
+}
+
+
+/* Контейнер кнопки  */
+.quiz-btn-wrapper {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.quiz-btn {
+    display: inline-block;
+    background: linear-gradient(90deg, #e9672b, #e32636);
+    padding: 10px 40px;
+    border-radius: 40px;
+    font-weight: bold;
+    font-size: 12px;
+    color: #FFFFFF;
+    text-decoration: none;
+    transition: 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.quiz-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(233, 103, 43, 0.5);
+}
+
+/* ---------------------- БЛОК ОЖИДАНИЯ ---------------------- */
+.coming-soon {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.waiting-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 21px;
+}
+
+.waiting-sub {
+  font-family: var(--font-main);
+  font-size: 18px;
+  color: var(--text-gray);
+}
+
+.waiting-title {
+  font-family: var(--font-heading);
+  font-size: 42px;
+  font-weight: normal;
+  color: var(--text-white);
+  line-height: 1.2;
+}
