@@ -1,0 +1,66 @@
+/* ========== ТЕМА МОДАЛЬНЫХ ОКОН ========== */
+.modal {
+  background: linear-gradient(145deg, #0f0f1a 0%, #0a0a12 100%);
+  border: 1.5px solid rgba(233, 103, 43, 0.6);
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5);
+}
+
+.modal-close {
+  color: #e9672b;
+}
+.modal-close:hover {
+  color: #e9672b;
+}
+
+
+.modal-subtitle {
+  color: #b0b0c0;
+}
+
+.modal-field label {
+  color: #ffffff;
+}
+
+.modal-field input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(233, 103, 43, 0.4);
+  color: #ffffff;
+}
+
+.modal-field input::placeholder {
+  color: rgba(176, 176, 192, 0.5);
+}
+
+.modal-field input:focus {
+  border-color: #e9672b;
+}
+
+.checkbox-label {
+  color: #b0b0c0;
+}
+
+.checkbox-label input {
+  accent-color: #00F0FF;
+}
+
+.forgot-link {
+  color: #00F0FF;
+}
+
+.modal-btn {
+    background: transparent;
+    border: 1.5px solid #e9672b;
+    color: #e9672b;
+    padding: 8px 20px;
+    border-radius: 40px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.modal-switch {
+  color: #b0b0c0;
+}
+
+.modal-switch a {
+  color: #E32636;
+}
