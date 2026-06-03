@@ -1,0 +1,93 @@
+/* ========== ШАПКА САЙТА ========== */
+.header {
+    padding: 20px 0;
+    border-bottom: 2px solid transparent;
+    border-image: linear-gradient(90deg, #e9672b, #e32636);
+    border-image-slice: 1;
+}
+
+.header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.logo-img {
+    height: 42px;
+    width: auto;
+    display: block;
+}
+
+.nav {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+    flex-wrap: wrap;
+}
+
+.nav a {
+    color: #B0B0C0;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 15px;
+    transition: 0.2s;
+}
+
+.nav a:hover {
+    color: #e9672b;
+}
+
+.nav a.active {
+  color: white;
+  font-weight: 500;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-login {
+    background: transparent;
+    border: 1.5px solid #e9672b;
+    color: #e9672b;
+    padding: 8px 20px;
+    border-radius: 40px;
+    font-weight: 600;
+    font-size: 13px;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.btn-login:hover {
+    background: #e9672b;
+    color: #0A0A0F;
+}
+
+.btn-reg {
+    background: linear-gradient(90deg, #e9672b, #e32636);
+    border: none;
+    color: #0A0A0F;
+    padding: 8px 20px;
+    border-radius: 40px;
+    font-weight: 700;
+    font-size: 13px;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.btn-reg:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 10px rgba(233, 103, 43, 0.5);
+}
+
+@media (max-width: 550px) {
+    .header-inner {
+        flex-direction: column;
+    }
+    .auth-buttons {
+        margin-top: 6px;
+    }
+}
