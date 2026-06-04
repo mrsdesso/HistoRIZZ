@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Исторические личности — узнай больше о тех, кто менял мир">
+  <title>HistoRiZZ | Исторические личности</title>
+
+    <link rel="stylesheet" href="css/lichnosti.css">
+    <link rel="stylesheet" href="css/header.css">
+    <link rel="stylesheet" href="css/footer.css">
+    <link rel="stylesheet" href="css/modal.css">
+    <link rel="stylesheet" href="css/modal-theme.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&family=Prosto+One&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prosto+One&display=swap" rel="stylesheet">
+
+    <link rel="icon" href="images/favicon.svg">
+</head>
+<body>
+
+<script src="js/modal.js"></script>
+
+<!-- ========== ШАПКА ========== -->
+<header class="header">
+    <div class="container header-inner">
+        <a href="main.html" class="logo">
+            <img src="images/logo.png" alt="HistoRIZZ" class="logo-img">
+        </a>
+        <ul class="nav">
+            <li><a href="main.html">Главная</a></li>
+            <li><a href="periods.html">Периоды</a></li>
+            <li><a href="lichnosti.html" class="active">Личности</a></li>
+            <li><a href="carts.html">Карты</a></li>
+            <li><a href="victorins.html">Викторины</a></li>
+        </ul>
+        <div class="auth-buttons">
+            <a href="#" class="btn-login">войти</a>
+            <a href="#" class="btn-reg">регистрация</a>
+        </div>
+    </div>
+</header>
+
+<!-- ========== ОСНОВНОЙ КОНТЕНТ ========== -->
+<main>
+    <div class="container">
+        <div class="hero-text">
+            <h1 class="hero-title">Исторические личности</h1>
+            <p class="hero-subtitle">Узнай больше о тех, кто менял мир</p>
+        </div>
+
+            <!-- Фильтры -->
+        <div class="filters">
+            <div class="filter-group">
+                <label>Фильтр по эпохе:</label>
+                <select class="filter-select">
+                <option>Все эпохи</option>
+                <option>Античность</option>
+                <option>Средневековье</option>
+                <option>Возрождение</option>
+                <option>Новое время</option>
+                <option>Новейшее время</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Фильтр по категории:</label>
+                <select class="filter-select">
+                <option>Все</option>
+                <option>Правители</option>
+                <option>Учёные</option>
+                <option>Художники</option>
+                <option>Писатели</option>
+                <option>Путешественники</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Поиск по имени...</label>
+                <input type="text" class="filter-search" placeholder="Например, Цезарь">
+            </div>
+        </div>
+
+        <!-- Сетка карточек личностей -->
+        <div class="persons-grid">
+            <!-- Юлий Цезарь -->
+            <div class="person-card">
+                <div class="person-photo">
+                    <img src="images/lich/chezar.png" alt="Юлий Цезарь">
+                </div>
+                <div class="person-info">
+                    <h3 class="person-name">Юлий Цезарь</h3>
+                    <div class="person-years">100–44 гг. до н.э.</div>
+                    <p class="person-description">Политик, полководец, диктатор Рима</p>
+                    <a href="#" class="person-btn">читать →</a>
+                </div>
+            </div>
+            <!-- Леонардо да Винчи -->
+            <div class="person-card">
+                <div class="person-photo">
+                    <img src="images/lich/vinchi.png" alt="Леонардо да Винчи">
+                </div>
+                <div class="person-info">
+                    <h3 class="person-name">Леонардо да Винчи</h3>
+                    <div class="person-years">1452–1519 гг.</div>
+                    <p class="person-description">Художник, учёный, изобретатель</p>
+                    <a href="#" class="person-btn">читать →</a>
+                </div>
+            </div>
+            <!-- Наполеон Бонапарт -->
+            <div class="person-card">
+                <div class="person-photo">
+                    <img src="images/lich/napoleon.png" alt="Наполеон Бонапарт">
+                </div>
+                <div class="person-info">
+                    <h3 class="person-name">Наполеон Бонапарт</h3>
+                    <div class="person-years">1769–1821 гг.</div>
+                    <p class="person-description">Император французов, полководец</p>
+                    <a href="#" class="person-btn">читать →</a>
+                </div>
+            </div>
+            <!-- Лев Толстой -->
+            <div class="person-card">
+                <div class="person-photo">
+                    <img src="images/lich/tolstoi.png" alt="Лев Толстой">
+                </div>
+                <div class="person-info">
+                    <h3 class="person-name">Лев Толстой</h3>
+                    <div class="person-years">1828–1910 гг.</div>
+                    <p class="person-description">Писатель, мыслитель, философ</p>
+                    <a href="lev_tolstoi.html" class="person-btn">читать →</a>
+                </div>
+            </div>
+            <!-- Мария Кюри -->
+            <div class="person-card">
+                <div class="person-photo">
+                    <img src="images/lich/kuri.png" alt="Мария Кюри">
+                </div>
+                <div class="person-info">
+                    <h3 class="person-name">Мария Кюри</h3>
+                    <div class="person-years">1867–1934 гг.</div>
+                    <p class="person-description">Физик, химик, Нобелевская премия</p>
+                    <a href="#" class="person-btn">читать →</a>
+                </div>
+            </div>
+            <!-- Марко Поло -->
+            <div class="person-card">
+                <div class="person-photo">
+                <img src="images/lich/polo.png" alt="Марко Поло">
+                </div>
+                <div class="person-info">
+                    <h3 class="person-name">Марко Поло</h3>
+                    <div class="person-years">1254–1324 гг.</div>
+                    <p class="person-description">Путешественник, торговец, писатель</p>
+                    <a href="#" class="person-btn">читать →</a>
+                </div>
+            </div>
+        </div>      
+    </div>
+</main>
+
+<!-- ========== ФУТЕР ========== -->
+<footer class="footer">
+    <div class="container footer-inner">
+        <img src="images/logo.png" alt="HistoRIZZ" class="footer-logo">
+        <p class="copyright">© 2026 HistoRIZZ — история с характером</p>
+        <div class="footer-contacts">
+            <a href="mailto:hello@historizz.ru">📧 hello@historizz.ru</a> |
+            <a href="#">📱 @historizz</a> |
+            <a href="#">🎵 #историясхарактером</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
