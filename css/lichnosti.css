@@ -1,4 +1,4 @@
-/* ---------------------- ПЕРЕМЕННЫЕ ---------------------- */
+/* переменные */
 :root {
   --bg-dark: #0a0a12;
   --text-gray: #b0b0c0;
@@ -10,7 +10,7 @@
   --font-heading: 'Prosto One', sans-serif;
 }
 
-/* ---------------------- ГЛОБАЛЬНЫЕ СБРОСЫ ---------------------- */
+/* общие стили */
 * {
   margin: 0;
   padding: 0;
@@ -31,7 +31,7 @@ body {
 }
 
 
-/* ---------------------- ОСНОВНОЙ КОНТЕНТ ---------------------- */
+/* страница */
 main {
   padding: 40px 0 60px;
 }
@@ -55,7 +55,7 @@ main {
   color: var(--text-gray);
 }
 
-/* ---------------------- ФИЛЬТРЫ ---------------------- */
+/* фильтры */
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -113,7 +113,7 @@ main {
   box-shadow: 0 0 6px rgba(233,103,43,0.4);
 }
 
-/* ---------------------- СЕТКА КАРТОЧЕК ---------------------- */
+/*карточки */
 .persons-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -150,51 +150,74 @@ main {
 }
 
 .person-info {
-  flex: 1;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
-
 .person-name {
-  font-family: var(--font-heading);
-  font-size: 26px;
-  font-weight: normal;
-  color: var(--accent-orange);
-  margin-bottom: 8px;
+    font-family: var(--font-heading);
+    font-size: 26px;
+    font-weight: normal;
+    color: var(--text-white);
+    margin-bottom: 8px;
 }
 
 .person-years {
-  font-family: var(--font-main);
-  font-size: 14px;
-  color: var(--text-gray);
-  margin-bottom: 12px;
-  letter-spacing: 0.3px;
+    font-family: var(--font-main);
+    font-size: 14px;
+    color: var(--text-gray);
+    margin-bottom: 12px;
+    letter-spacing: 0.3px;
 }
 
+.person-category {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-orange);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+
 .person-description {
-  font-family: var(--font-main);
-  font-size: 15px;
-  color: var(--green-dark);
-  line-height: 1.4;
-  margin-bottom: 24px;
+    font-family: var(--font-main);
+    font-size: 15px;
+    color: var(--green-dark);
+    line-height: 1.4;
+    margin-bottom: 12px;
+    flex: 1; /* 👈 главное изменение */
 }
 
 .person-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: 1px solid var(--accent-orange);
-  border-radius: 40px;
-  padding: 8px 20px;
-  font-family: var(--font-main);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--accent-orange);
-  text-decoration: none;
-  transition: 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--accent-orange);
+    border-radius: 40px;
+    padding: 8px 20px;
+    font-family: var(--font-main);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--accent-orange);
+    text-decoration: none;
+    transition: 0.2s;
+    align-self: flex-start;
+    margin-top: auto;
 }
 
 .person-btn:hover {
   background-color: var(--accent-orange);
   color: var(--bg-dark);
+}
+
+.person-category {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-orange);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
