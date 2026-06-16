@@ -1,52 +1,9 @@
-/* ---------------------- ПОДКЛЮЧЕНИЕ ШРИФТОВ ---------------------- */
-@font-face {
-  font-family: 'Prosto One';
-  src: url('../fonts/prosto-one.woff2') format('woff2'),
-       url('../fonts/prosto-one.woff') format('woff');
-  font-weight: normal;
-  font-style: normal;
-}
+/*  стили страницы «Викторины» */
 
-/* ---------------------- ПЕРЕМЕННЫЕ ---------------------- */
-:root {
-  --bg-dark: #0a0a12;
-  --text-gray: #b0b0c0;
-  --text-white: #ffffff;
-  --accent-orange: #e9672b;
-  --green-dark: #565d33;
-  --font-main: 'Inter', sans-serif;
-  --font-heading: 'Prosto One', sans-serif;
-}
-
-/* ---------------------- общие стили ---------------------- */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  background-color: var(--bg-dark);
-  font-family: var(--font-main);
-  color: var(--text-white);
-  line-height: 1.4;
-  overflow-x: hidden;
-}
-
-.container {
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-
-/* ---------------------- ОСНОВНОЙ КОНТЕНТ ---------------------- */
-main{
-    padding: 0 20px;
-}
-
+/*  ЗАГОЛОВОК СТРАНИЦЫ  */
 .hero-text {
-    text-align: center;
-    padding: 20px 0;
+  text-align: center;
+  padding: 20px 0;
 }
 
 .hero-title {
@@ -63,14 +20,16 @@ main{
   color: var(--text-gray);
 }
 
-/* ---------------------- СЕТКА КАРТОЧЕК ---------------------- */
+/*  СЕТКА КАРТОЧЕК  */
 .quiz-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 30px;
+  margin-bottom: 40px;
+  padding: 0 24px;
 }
 
-/* ---------------------- КАРТОЧКА ВИКТОРИНЫ ---------------------- */
+/*  КАРТОЧКА ВИКТОРИНЫ  */
 .quiz-card {
   border: 2px solid var(--accent-orange);
   border-radius: 15px;
@@ -82,6 +41,7 @@ main{
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background-color: var(--bg-dark);
 }
 
 .quiz-card:hover {
@@ -90,7 +50,7 @@ main{
   box-shadow: 0 12px 24px rgba(233, 103, 43, 0.15);
 }
 
-/* Грид для карточки */
+/*  ВНУТРЕННЯЯ СЕТКА КАРТОЧКИ  */
 .quiz-card-grid {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -98,7 +58,7 @@ main{
   align-items: start;
 }
 
-/* заголовок, мета, описание */
+/*  ИНФОРМАЦИОННАЯ ЧАСТЬ  */
 .quiz-info {
   display: flex;
   flex-direction: column;
@@ -128,7 +88,7 @@ main{
   margin: 0;
 }
 
-/* рейтинг и статистика  */
+/*  БОКОВАЯ ПАНЕЛЬ  */
 .quiz-sidebar {
   display: flex;
   flex-direction: column;
@@ -143,32 +103,31 @@ main{
   white-space: nowrap;
 }
 
-
-/* Контейнер кнопки  */
+/*  КНОПКА  */
 .quiz-btn-wrapper {
   text-align: center;
   margin-top: 8px;
 }
 
 .quiz-btn {
-    display: inline-block;
-    background: linear-gradient(90deg, #e9672b, #e32636);
-    padding: 10px 40px;
-    border-radius: 40px;
-    font-weight: bold;
-    font-size: 12px;
-    color: #FFFFFF;
-    text-decoration: none;
-    transition: 0.2s;
-    font-family: 'Inter', sans-serif;
+  display: inline-block;
+  background: linear-gradient(90deg, var(--accent-orange), #e32636);
+  padding: 10px 40px;
+  border-radius: 40px;
+  font-weight: bold;
+  font-size: 12px;
+  color: #FFFFFF;
+  text-decoration: none;
+  transition: 0.2s;
+  font-family: var(--font-main);
 }
 
 .quiz-btn:hover {
-    transform: scale(1.02);
-    box-shadow: 0 0 15px rgba(233, 103, 43, 0.5);
+  transform: scale(1.02);
+  box-shadow: 0 0 15px rgba(233, 103, 43, 0.5);
 }
 
-/* ---------------------- БЛОК ОЖИДАНИЯ ---------------------- */
+/*  БЛОК «СКОРО»  */
 .coming-soon {
   text-align: center;
   padding: 20px 0;
@@ -193,4 +152,84 @@ main{
   font-weight: normal;
   color: var(--text-white);
   line-height: 1.2;
+}
+
+/*  АДАПТИВ  */
+@media (max-width: 1024px) {
+  .quiz-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .quiz-title {
+    font-size: 24px;
+  }
+  .quiz-card {
+    padding: 20px 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .quiz-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .quiz-card-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .quiz-sidebar {
+    text-align: left;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .quiz-rating {
+    white-space: normal;
+  }
+  .quiz-btn-wrapper {
+    text-align: left;
+  }
+  .waiting-title {
+    font-size: 32px;
+  }
+  .waiting-sub {
+    font-size: 16px;
+  }
+  .hero-title {
+    font-size: 36px;
+  }
+  .hero-subtitle {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .quiz-card {
+    padding: 16px 14px;
+  }
+  .quiz-title {
+    font-size: 20px;
+  }
+  .quiz-description {
+    font-size: 14px;
+  }
+  .quiz-meta {
+    font-size: 12px;
+  }
+  .quiz-btn {
+    padding: 8px 24px;
+    font-size: 11px;
+  }
+  .waiting-title {
+    font-size: 26px;
+  }
+  .waiting-sub {
+    font-size: 14px;
+  }
+  .hero-title {
+    font-size: 28px;
+  }
+  .hero-subtitle {
+    font-size: 14px;
+  }
 }
