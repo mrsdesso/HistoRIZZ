@@ -1,8 +1,6 @@
-/* ============================================================
-   main.css — стили главной страницы (исправленная сетка статей)
-   ============================================================ */
+/* стили главной страницы */
 
-/* ---------- ГЕРОЙ ---------- */
+/* главный блок */
 .hero {
   width: 100%;
   background-image: url('../images/main/main.png');
@@ -104,41 +102,41 @@
   margin-bottom: 32px;
 }
 
-/* ---------- СТАТЬИ (исправленная сетка) ---------- */
+/* ---------- СТАТЬИ ---------- */
 .articles-grid {
-  display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
-  gap: 30px !important;
-  margin-bottom: 40px !important;
+  display: grid ;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  margin-bottom: 40px;
 }
 
 .article-card {
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
 .article-top {
-  flex: 1 !important;
-  display: flex !important;
-  gap: 20px !important;
-  background-color: #2A2A3A !important;
-  padding: 20px !important;
-  border-radius: 15px 15px 0 0 !important;
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  background-color: #2A2A3A;
+  padding: 20px;
+  border-radius: 15px 15px 0 0;
 }
 
 .article-img {
-  flex-shrink: 0 !important;
-  width: 169px !important;
-  height: 169px !important;
+  flex-shrink: 0;
+  width: 169px;
+  height: 169px;
 }
 .article-img img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  border-radius: 12px !important;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
 }
 
 .article-info {
@@ -266,7 +264,7 @@
   align-self: center;
 }
 
-/* ---------- АДАПТИВ (главная) ---------- */
+/* ---------- АДАПТИВ ---------- */
 @media (max-width: 1024px) {
   .hero h1 { font-size: 42px; }
   .hero-desc { font-size: 16px; }
