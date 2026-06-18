@@ -64,7 +64,7 @@ session_start();
         <div class="section-line"></div>
         <div class="articles-grid">
             <?php
-            // Запрос на получение трёх самых популярных статей (по лайкам).
+            // Запрос на получение трех самых популярных статей (по лайкам).
             $sql_articles = "
                 SELECT a.ID_article, a.title, a.subtitle, a.for_popular, a.reading_time,
                        (SELECT COUNT(*) FROM article_likes WHERE ID_article = a.ID_article) as likes,
@@ -166,10 +166,10 @@ session_start();
     </div>
 </footer>
 
-<!-- модальные окна регситрации и авторизации -->
+<!-- модальные окна регистрации и авторизации -->
 <?php include 'login_reg_modal.php'; ?>
 
-<!--модальное окно викторин -->
+<!-- модальное окно викторин -->
 <div id="quizModalOverlay" class="modal-overlay">
     <div class="modal" style="width: 700px; max-width: 95%;">
         <span class="modal-close">&times;</span>
@@ -177,16 +177,164 @@ session_start();
     </div>
 </div>
 
-<!-- скрипт логики авторизации и регситрации -->
-<script src="js/auth.js"></script>
-
-<!-- скрипт для виктоорин (на jQuery) -->
 <script>
 $(document).ready(function() {
-    // переменные для хранения состояния текущей викторины
+
+    // ============================================================
+    // МОДАЛЬНЫЕ ОКНА (открытие/закрытие)
+    // ============================================================
+
+    // Закрытие по клику на крестик
+    $('.modal-close').click(function(e) {
+        e.stopPropagation();
+        $(this).closest('.modal-overlay').removeClass('active');
+    });
+
+    // Закрытие по клику на фон
+    $('.modal-overlay').click(function(e) {
+        if (e.target === this) {
+            $(this).removeClass('active');
+        }
+    });
+
+    // Предотвращаем закрытие при клике на содержимое модалки
+    $('.modal').click(function(e) {
+        e.stopPropagation();
+    });
+
+    // ============================================================
+    // ОТКРЫТИЕ МОДАЛОК ВХОДА/РЕГИСТРАЦИИ
+    // ============================================================
+    $(document).on('click', '#loginBtn', function(e) {
+        e.preventDefault();
+        $('#loginModalOverlay').addClass('active');
+    });
+
+    $(document).on('click', '#registerBtn', function(e) {
+        e.preventDefault();
+        $('#registerModalOverlay').addClass('active');
+    });
+
+    $(document).on('click', '#switchToRegister', function(e) {
+        e.preventDefault();
+        $('#loginModalOverlay').removeClass('active');
+        $('#registerModalOverlay').addClass('active');
+    });
+
+    $(document).on('click', '#switchToLogin', function(e) {
+        e.preventDefault();
+        $('#registerModalOverlay').removeClass('active');
+        $('#loginModalOverlay').addClass('active');
+    });
+
+    // ============================================================
+    // ПОКАЗ/СКРЫТИЕ ПАРОЛЯ
+    // ============================================================
+    $(document).on('click', '.toggle-password', function() {
+        var target = $(this).data('target');
+        var input = $('#' + target);
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            $(this).text('🙈');
+        } else {
+            input.attr('type', 'password');
+            $(this).text('👁');
+        }
+    });
+
+    // ============================================================
+    // РЕГИСТРАЦИЯ
+    // ============================================================
+    $(document).on('submit', '#registerForm', function(e) {
+        e.preventDefault();
+        
+        var name = $(this).find('input[name="name"]').val().trim();
+        var surname = $(this).find('input[name="surname"]').val().trim();
+        var email = $(this).find('input[name="email"]').val().trim();
+        var password = $(this).find('input[name="password"]').val();
+        var password_confirm = $(this).find('input[name="password_confirm"]').val();
+        
+        if (!name || !surname || !email || !password) {
+            alert('Заполните все поля');
+            return;
+        }
+        if (password !== password_confirm) {
+            alert('Пароли не совпадают');
+            return;
+        }
+        if (password.length < 5) {
+            alert('Пароль должен быть не менее 5 символов');
+            return;
+        }
+        
+        $.ajax({
+            url: 'ajax_auth.php',
+            type: 'POST',
+            data: {
+                action: 'register',
+                name: name,
+                surname: surname,
+                email: email,
+                password: password,
+                password_confirm: password_confirm
+            },
+            dataType: 'json',
+            success: function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Ошибка регистрации');
+                }
+            },
+            error: function(xhr) {
+                alert('Ошибка соединения: ' + xhr.responseText);
+            }
+        });
+    });
+
+    // ============================================================
+    // ВХОД
+    // ============================================================
+    $(document).on('submit', '#loginForm', function(e) {
+        e.preventDefault();
+        
+        var email = $(this).find('input[name="email"]').val().trim();
+        var password = $(this).find('input[name="password"]').val();
+        
+        if (!email || !password) {
+            alert('Заполните все поля');
+            return;
+        }
+        
+        $.ajax({
+            url: 'ajax_auth.php',
+            type: 'POST',
+            data: {
+                action: 'login',
+                email: email,
+                password: password
+            },
+            dataType: 'json',
+            success: function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Ошибка входа');
+                }
+            },
+            error: function(xhr) {
+                alert('Ошибка соединения: ' + xhr.responseText);
+            }
+        });
+    });
+
+    // ============================================================
+    // ВИКТОРИНЫ
+    // ============================================================
+     // переменные для хранения состояния текущей викторины
     let currentQuizData = null, currentQuestionIndex = 0, userAnswers = {};
 
-    // обработчик события нажатия на кнопку "Играть" на карточке викторины
+     // обработчик события нажатия на кнопку "Играть" на карточке викторины
     $('.play-quiz').click(function(e) {
         e.preventDefault();
         let quizId = $(this).closest('.quiz-card').data('quiz-id');
@@ -235,7 +383,7 @@ $(document).ready(function() {
             <div class="quiz-question-text">${escapeHtml(q.text)}</div>
             <div class="quiz-answers-list">`;
 
-        // вывод варианты ответов
+        // вывод вариантJD ответов
         q.answers.forEach(a => {
             const checked = (savedAnswer === a.answer) ? 'checked' : '';
             html += `<label class="quiz-answer-option">
@@ -244,7 +392,7 @@ $(document).ready(function() {
             </label>`;
         });
 
-        // кнопки
+        // кнопки   
         html += `</div>
             <div class="quiz-navigation">
                 <button type="button" class="quiz-nav-btn" id="prevBtn" ${currentQuestionIndex===0?'disabled':''}>← Назад</button>`;
@@ -258,13 +406,13 @@ $(document).ready(function() {
 
         $('#quizModalBody').html(html);
 
-        // выбор ответов
+         // выбор ответов
         $('input[name="question"]').change(function() {
             userAnswers[q.id] = $(this).val();
             updateProgressIndicator();
         });
 
-        // обработка кнопок
+         // обработка кнопок
         $('#prevBtn').click(() => {
             if (currentQuestionIndex > 0) {
                 currentQuestionIndex--;
@@ -279,7 +427,7 @@ $(document).ready(function() {
             }
         });
 
-        // завершение викторины
+         // завершение викторины
         $('#finishBtn').click(() => {
             if (Object.keys(userAnswers).length < total) {
                 if (!confirm('Вы ответили не на все вопросы. Всё равно завершить?')) return;
@@ -310,7 +458,6 @@ $(document).ready(function() {
                 if (res.error) {
                     alert(res.error);
                 } else {
-                    //  результат
                     let stars = '';
                     for (let i = 1; i <= 5; i++) {
                         stars += `<span class="star-rating" data-value="${i}">☆</span>`;
@@ -332,7 +479,6 @@ $(document).ready(function() {
                     // обработчик клика по звёздам для оценки
                     $('.star-rating').click(function() {
                         let rating = $(this).data('value');
-                        // смена цвета звезды до выбранной
                         $('.star-rating').each(function(idx, el) {
                             if ($(el).data('value') <= rating) {
                                 $(el).text('★').css('color', '#FFD700');
@@ -370,7 +516,9 @@ $(document).ready(function() {
     $(document).on('click', '.close-modal-btn', function() {
         $('.modal-overlay').removeClass('active');
     });
+
 });
 </script>
+
 </body>
 </html>
