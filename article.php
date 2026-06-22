@@ -1,7 +1,5 @@
 <?php
-// ============================================================
-// article.php — страница статьи (с оценками, чатом, шедеврами)
-// ============================================================
+// страница статьи
 require_once 'config.php';
 session_start();
 
@@ -11,7 +9,7 @@ if ($article_id < 0) {
     die('Неверный ID статьи');
 }
 
-// ========== ЗАПРОС ДАННЫХ СТАТЬИ (добавлено hashtags) ==========
+// ========== ЗАПРОС ДАННЫХ СТАТЬИ ==========
 $sql = "SELECT 
             ID_article,
             title,
@@ -43,6 +41,19 @@ if ($result->num_rows === 0) {
 
 $article = $result->fetch_assoc();
 $stmt->close();
+
+// ========== ПРОВЕРКА СТАТУСА ЗАКЛАДКИ ==========
+$is_bookmarked = false;
+if (isset($_SESSION['user_id'])) {
+    $user_id = $_SESSION['user_id'];
+    $bookmark_stmt = $conn->prepare("SELECT ID_bookmark FROM bookmarks WHERE ID_user = ? AND item_type = 'статья' AND ID_item = ?");
+    if ($bookmark_stmt) {
+        $bookmark_stmt->bind_param("ii", $user_id, $article_id);
+        $bookmark_stmt->execute();
+        $is_bookmarked = $bookmark_stmt->get_result()->num_rows > 0;
+        $bookmark_stmt->close();
+    }
+}
 
 // ========== СРЕДНИЙ РЕЙТИНГ ==========
 $avg_rating = 0;
@@ -178,7 +189,7 @@ if (!empty($article['masterpieces'])) {
                     <h1 class="article-title"><?= htmlspecialchars($article['title']) ?></h1>
                     <p class="article-subtitle"><?= htmlspecialchars($article['subtitle']) ?></p>
                     
-                    <!-- Хештеги (под подзаголовком, в одну строку с обводкой) -->
+                    <!-- Хештеги -->
                     <?php if (!empty($article['hashtags'])): ?>
                         <div class="article-hashtags">
                             <?php 
@@ -186,13 +197,12 @@ if (!empty($article['masterpieces'])) {
                             foreach ($tags as $tag): 
                                 if (!empty($tag)):
                                     $tag_clean = trim($tag);
-                                    // Определяем цвет по ключевому слову
                                     if (mb_strpos($tag_clean, 'толстовство') !== false) {
                                         $color = '#E32636';
                                     } elseif (mb_strpos($tag_clean, 'пацифизм') !== false) {
                                         $color = '#565D33';
                                     } else {
-                                        $color = '#E9672B'; // цвет по умолчанию
+                                        $color = '#E9672B';
                                     }
                             ?>
                                     <span class="hashtag" style="color: <?= $color ?>; border-color: <?= $color ?>;">
@@ -203,13 +213,14 @@ if (!empty($article['masterpieces'])) {
                     <?php endif; ?>
                 </div>
                 <div class="article-save">
-                    <button class="btn-save">Сохранить</button>
+                    <button class="btn-save <?= $is_bookmarked ? 'saved' : '' ?>" id="saveArticleBtn" data-article-id="<?= $article_id ?>">
+                        <span><?= $is_bookmarked ? 'Сохранено' : 'Сохранить' ?></span>
+                    </button>
                 </div>
             </div>
 
             <!-- ===== ТЕЛО СТАТЬИ ===== -->
             <div class="article-body">
-
                 <!-- БЛОК 1: "Кто он такой?" -->
                 <div class="bio-row">
                     <div class="bio-content">
@@ -317,7 +328,7 @@ if (!empty($article['masterpieces'])) {
             <h2 class="modal-title"><?= htmlspecialchars($article['title']) ?>: подробнее</h2>
             
             <div class="modal-section">
-                <h3 class="modal-subtitle">Биография</h3>
+                <h3 class="modal_subtitle">Биография</h3>
                 <div class="modal-text">
                     <?= nl2br(htmlspecialchars($article['content'])) ?>
                 </div>
@@ -325,7 +336,7 @@ if (!empty($article['masterpieces'])) {
 
             <?php if (!empty($facts_list)): ?>
             <div class="modal-section">
-                <h3 class="modal-subtitle">Ещё больше фактов</h3>
+                <h3 class="modal_subtitle">Ещё больше фактов</h3>
                 <?= $facts_list ?>
             </div>
             <?php endif; ?>
@@ -352,15 +363,175 @@ if (!empty($article['masterpieces'])) {
 <script src="js/auth.js"></script>
 <script>
 $(document).ready(function() {
+
+    // ============================================================
+    // 1. МОДАЛЬНЫЕ ОКНА (открытие/закрытие)
+    // ============================================================
+
     $('#showFullContent').click(function() {
         $('#contentModal').addClass('active');
     });
 
-    $('.modal-close, .modal-overlay').click(function() {
-        $('.modal-overlay').removeClass('active');
+    $('#openChat').click(function() {
+        $('#chatModal').addClass('active');
+        loadChatMessages();
     });
 
-    // ===== РЕЙТИНГ =====
+    $('.modal-close').click(function(e) {
+        e.stopPropagation();
+        $(this).closest('.modal-overlay').removeClass('active');
+    });
+
+    $('.modal-overlay').click(function(e) {
+        if (e.target === this) {
+            $(this).removeClass('active');
+        }
+    });
+
+    $('.modal').click(function(e) {
+        e.stopPropagation();
+    });
+
+    // ============================================================
+    // 2. ОТКРЫТИЕ МОДАЛОК ВХОДА/РЕГИСТРАЦИИ
+    // ============================================================
+    $(document).on('click', '#loginBtn', function(e) {
+        e.preventDefault();
+        $('#loginModalOverlay').addClass('active');
+    });
+
+    $(document).on('click', '#registerBtn', function(e) {
+        e.preventDefault();
+        $('#registerModalOverlay').addClass('active');
+    });
+
+    $(document).on('click', '#switchToRegister', function(e) {
+        e.preventDefault();
+        $('#loginModalOverlay').removeClass('active');
+        $('#registerModalOverlay').addClass('active');
+    });
+
+    $(document).on('click', '#switchToLogin', function(e) {
+        e.preventDefault();
+        $('#registerModalOverlay').removeClass('active');
+        $('#loginModalOverlay').addClass('active');
+    });
+
+    // ============================================================
+    // 3. ПОКАЗ/СКРЫТИЕ ПАРОЛЯ
+    // ============================================================
+    $(document).on('click', '.toggle-password', function() {
+        var target = $(this).data('target');
+        var input = $('#' + target);
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            $(this).text('🙈');
+        } else {
+            input.attr('type', 'password');
+            $(this).text('👁');
+        }
+    });
+
+    // ============================================================
+    // 4. РЕГИСТРАЦИЯ
+    // ============================================================
+    $(document).on('submit', '#registerForm', function(e) {
+        e.preventDefault();
+        
+        var name = $(this).find('input[name="name"]').val().trim();
+        var surname = $(this).find('input[name="surname"]').val().trim();
+        var email = $(this).find('input[name="email"]').val().trim();
+        var password = $(this).find('input[name="password"]').val();
+        var password_confirm = $(this).find('input[name="password_confirm"]').val();
+        
+        if (!name || !surname || !email || !password) {
+            alert('Заполните все поля');
+            return;
+        }
+        if (password !== password_confirm) {
+            alert('Пароли не совпадают');
+            return;
+        }
+        if (password.length < 5) {
+            alert('Пароль должен быть не менее 5 символов');
+            return;
+        }
+        
+        $.ajax({
+            url: 'ajax_auth.php',
+            type: 'POST',
+            data: {
+                action: 'register',
+                name: name,
+                surname: surname,
+                email: email,
+                password: password,
+                password_confirm: password_confirm
+            },
+            dataType: 'json',
+            success: function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Ошибка регистрации');
+                }
+            },
+            error: function(xhr) {
+                alert('Ошибка соединения: ' + xhr.responseText);
+            }
+        });
+    });
+
+    // ============================================================
+    // 5. ВХОД
+    // ============================================================
+    $(document).on('submit', '#loginForm', function(e) {
+        e.preventDefault();
+        
+        var email = $(this).find('input[name="email"]').val().trim();
+        var password = $(this).find('input[name="password"]').val();
+        
+        if (!email || !password) {
+            alert('Заполните все поля');
+            return;
+        }
+        
+        $.ajax({
+            url: 'ajax_auth.php',
+            type: 'POST',
+            data: {
+                action: 'login',
+                email: email,
+                password: password
+            },
+            dataType: 'json',
+            success: function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Ошибка входа');
+                }
+            },
+            error: function(xhr) {
+                alert('Ошибка соединения: ' + xhr.responseText);
+            }
+        });
+    });
+
+    // ============================================================
+    // 6. КНОПКА "ВОЙДИТЕ" В ЧАТЕ
+    // ============================================================
+    $(document).on('click', '#chatLoginBtn', function(e) {
+        e.preventDefault();
+        $('#chatModal').removeClass('active');
+        setTimeout(function() {
+            $('#loginModalOverlay').addClass('active');
+        }, 200);
+    });
+
+    // ============================================================
+    // 7. РЕЙТИНГ
+    // ============================================================
     var userRating = <?= $user_rating ?>;
 
     function highlightStars(rating) {
@@ -381,12 +552,15 @@ $(document).ready(function() {
         }
     }
 
-    $('#ratingStars .star').hover(
-        function() { highlightStars($(this).data('rating')); },
-        function() { resetStars(); }
-    );
+    $(document).on('mouseenter', '#ratingStars .star', function() {
+        highlightStars($(this).data('rating'));
+    });
 
-    $('#ratingStars .star').click(function() {
+    $(document).on('mouseleave', '#ratingStars .star', function() {
+        resetStars();
+    });
+
+    $(document).on('click', '#ratingStars .star', function() {
         var rating = $(this).data('rating');
         var articleId = <?= $article_id ?>;
         <?php if (!isset($_SESSION['user_id'])): ?>
@@ -416,12 +590,9 @@ $(document).ready(function() {
 
     resetStars();
 
-    // ===== ЧАТ =====
-    $('#openChat').click(function() {
-        $('#chatModal').addClass('active');
-        loadChatMessages();
-    });
-
+    // ============================================================
+    // 8. ЧАТ (комментарии)
+    // ============================================================
     function loadChatMessages() {
         var articleId = <?= $article_id ?>;
         $.ajax({
@@ -445,7 +616,7 @@ $(document).ready(function() {
         });
     }
 
-    $('#chatSend').click(function() {
+    $(document).on('click', '#chatSend', function() {
         var comment = $('#chatInput').val().trim();
         if (!comment) {
             alert('Введите текст комментария');
@@ -473,12 +644,66 @@ $(document).ready(function() {
         if (e.which === 13) $('#chatSend').click();
     });
 
-    $(document).on('click', '#chatLoginBtn', function(e) {
+    // ============================================================
+    // 9. СОХРАНЕНИЕ СТАТЬИ (закладка)
+    // ============================================================
+    $(document).on('click', '#saveArticleBtn', function(e) {
         e.preventDefault();
-        $('#chatModal').removeClass('active');
-        setTimeout(function() {
-            $('#loginModalOverlay').addClass('active');
-        }, 200);
+        
+        var $btn = $(this);
+        var articleId = $btn.data('article-id');
+        
+        // ID = 0 — допустимое значение (у Льва Толстого)
+        if (articleId === undefined || articleId === null || articleId === '') {
+            alert('Ошибка: ID статьи не найден');
+            return;
+        }
+        
+        // Проверяем авторизацию
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            alert('Пожалуйста, войдите, чтобы сохранить статью.');
+            setTimeout(function() {
+                $('#loginModalOverlay').addClass('active');
+            }, 300);
+            return;
+        <?php endif; ?>
+        
+        var isSaved = $btn.hasClass('saved');
+        
+        $.ajax({
+            url: 'ajax_bookmark.php',
+            type: 'POST',
+            data: {
+                action: isSaved ? 'remove' : 'add',
+                item_type: 'article',
+                item_id: articleId
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    if (isSaved) {
+                        $btn.removeClass('saved');
+                        $btn.find('svg').css('fill', 'none');
+                        $btn.find('span').text('Сохранить');
+                    } else {
+                        $btn.addClass('saved');
+                        $btn.find('svg').css('fill', 'var(--accent-orange)');
+                        $btn.find('span').text('Сохранено');
+                    }
+                } else if (response.error === 'Не авторизован') {
+                    alert('Пожалуйста, войдите, чтобы сохранить статью.');
+                    setTimeout(function() {
+                        $('#loginModalOverlay').addClass('active');
+                    }, 300);
+                } else {
+                    alert(response.error || 'Ошибка сохранения');
+                }
+            },
+            error: function(xhr) {
+                console.log('Ошибка:', xhr.responseText);
+                alert('Ошибка соединения: ' + xhr.status + ' ' + xhr.statusText);
+            }
+        });
     });
 });
 </script>
