@@ -106,7 +106,7 @@ session_start();
     </section>
 </main>
 
-<!-- Футер (встроен, не отдельный файл) -->
+<!-- Футер -->
 <footer class="footer">
     <div class="container footer-inner">
         <img src="images/logo.png" alt="HistoRIZZ" class="footer-logo">
@@ -122,9 +122,15 @@ session_start();
 <!-- Модальные окна -->
 <?php include 'login_reg_modal.php'; ?>
 
+<!-- Модальное окно викторины с кнопкой сохранения -->
 <div id="quizModalOverlay" class="modal-overlay">
     <div class="modal" style="width: 700px; max-width: 95%;">
         <span class="modal-close">&times;</span>
+        <button class="modal-save" id="saveQuizBtn" title="Сохранить викторину">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+        </button>
         <div id="quizModalBody"></div>
     </div>
 </div>
@@ -133,6 +139,96 @@ session_start();
 <script>
 $(document).ready(function() {
     let currentQuizData = null, currentQuestionIndex = 0, userAnswers = {};
+
+    // ============================================================
+    // ЗАКЛАДКИ
+    // ============================================================
+    
+    // Проверка статуса закладки
+    function checkBookmarkStatus(quizId) {
+        $.ajax({
+            url: 'ajax_bookmark.php',
+            type: 'GET',
+            data: {
+                action: 'check',
+                item_type: 'quiz',
+                item_id: quizId
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.saved) {
+                    $('#saveQuizBtn').addClass('saved');
+                    $('#saveQuizBtn').find('svg').css('fill', 'var(--accent-orange)');
+                } else {
+                    $('#saveQuizBtn').removeClass('saved');
+                    $('#saveQuizBtn').find('svg').css('fill', 'none');
+                }
+            },
+            error: function(xhr) {
+                console.log('Ошибка проверки закладки:', xhr.responseText);
+            }
+        });
+    }
+
+    // Сохранение/удаление закладки
+    $(document).on('click', '#saveQuizBtn', function(e) {
+        e.stopPropagation();
+        
+        if (!currentQuizData) {
+            alert('Викторина ещё не загружена');
+            return;
+        }
+        
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            alert('Пожалуйста, войдите, чтобы сохранить викторину.');
+            $('#quizModalOverlay').removeClass('active');
+            setTimeout(function() {
+                $('#loginModalOverlay').addClass('active');
+            }, 300);
+            return;
+        <?php endif; ?>
+        
+        var quizId = currentQuizData.quiz_id;
+        if (!quizId) {
+            alert('Ошибка: ID викторины не найден');
+            return;
+        }
+        
+        var $btn = $(this);
+        var isSaved = $btn.hasClass('saved');
+        
+        $.ajax({
+            url: 'ajax_bookmark.php',
+            type: 'POST',
+            data: {
+                action: isSaved ? 'remove' : 'add',
+                item_type: 'quiz',
+                item_id: quizId
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    if (isSaved) {
+                        $btn.removeClass('saved');
+                        $btn.find('svg').css('fill', 'none');
+                    } else {
+                        $btn.addClass('saved');
+                        $btn.find('svg').css('fill', 'var(--accent-orange)');
+                    }
+                } else {
+                    alert(response.error || 'Ошибка сохранения');
+                }
+            },
+            error: function(xhr) {
+                console.log('Ошибка:', xhr.responseText);
+                alert('Ошибка соединения: ' + xhr.status + ' ' + xhr.statusText);
+            }
+        });
+    });
+
+    // ============================================================
+    // ВИКТОРИНЫ
+    // ============================================================
 
     $('.play-quiz').click(function(e) {
         e.preventDefault();
@@ -145,73 +241,179 @@ $(document).ready(function() {
         $('#quizModalBody').html('<div style="text-align:center; padding:20px;">Загрузка...</div>');
         $('#quizModalOverlay').addClass('active');
         $.ajax({
-            url: 'ajax_quiz_handler.php', type: 'GET', data: { id: quizId }, dataType: 'json',
+            url: 'ajax_quiz_handler.php', 
+            type: 'GET', 
+            data: { id: quizId }, 
+            dataType: 'json',
             success: function(data) {
-                if (data.error) { $('#quizModalBody').html('<p>Ошибка: ' + data.error + '</p>'); return; }
-                currentQuizData = data; currentQuestionIndex = 0; userAnswers = {};
+                if (data.error) { 
+                    $('#quizModalBody').html('<p>Ошибка: ' + data.error + '</p>'); 
+                    return; 
+                }
+                currentQuizData = data; 
+                currentQuestionIndex = 0; 
+                userAnswers = {};
                 renderCurrentQuestion();
+                
+                // Проверка статуса закладки
+                checkBookmarkStatus(quizId);
             },
-            error: function() { $('#quizModalBody').html('<p>Ошибка загрузки викторины</p>'); }
+            error: function() { 
+                $('#quizModalBody').html('<p>Ошибка загрузки викторины</p>'); 
+            }
         });
     }
 
     function renderCurrentQuestion() {
-        const total = currentQuizData.questions.length, q = currentQuizData.questions[currentQuestionIndex];
-        const savedAnswer = userAnswers[q.id] || '', isLast = (currentQuestionIndex === total - 1);
+        const total = currentQuizData.questions.length, 
+              q = currentQuizData.questions[currentQuestionIndex];
+        const savedAnswer = userAnswers[q.id] || '', 
+              isLast = (currentQuestionIndex === total - 1);
         const answeredCount = Object.keys(userAnswers).length;
-        let html = `<div class="quiz-step"><div class="quiz-header"><h2>${escapeHtml(currentQuizData.title)}</h2><p>${escapeHtml(currentQuizData.description)}</p></div>
+        
+        let html = `<div class="quiz-step">
+            <div class="quiz-header">
+                <h2>${escapeHtml(currentQuizData.title)}</h2>
+                <p>${escapeHtml(currentQuizData.description)}</p>
+            </div>
             <div class="quiz-progress">Вопрос ${currentQuestionIndex+1} из ${total} | Ответов: ${answeredCount} из ${total}</div>
-            <div class="quiz-question-text">${escapeHtml(q.text)}</div><div class="quiz-answers-list">`;
+            <div class="quiz-question-text">${escapeHtml(q.text)}</div>
+            <div class="quiz-answers-list">`;
+            
         q.answers.forEach(a => {
             const checked = (savedAnswer === a.answer) ? 'checked' : '';
-            html += `<label class="quiz-answer-option"><input type="radio" name="question" value="${escapeHtml(a.answer)}" ${checked}><span>${escapeHtml(a.answer)}</span></label>`;
+            html += `<label class="quiz-answer-option">
+                <input type="radio" name="question" value="${escapeHtml(a.answer)}" ${checked}>
+                <span>${escapeHtml(a.answer)}</span>
+            </label>`;
         });
-        html += `</div><div class="quiz-navigation"><button type="button" class="quiz-nav-btn" id="prevBtn" ${currentQuestionIndex===0?'disabled':''}>← Назад</button>`;
+        
+        html += `</div>
+            <div class="quiz-navigation">
+                <button type="button" class="quiz-nav-btn" id="prevBtn" ${currentQuestionIndex===0?'disabled':''}>← Назад</button>`;
+                
         if (!isLast) html += `<button type="button" class="quiz-nav-btn" id="nextBtn">Далее →</button>`;
-        html += `<button type="button" class="quiz-submit-btn" id="finishBtn">Завершить</button></div></div>`;
+        html += `<button type="button" class="quiz-submit-btn" id="finishBtn">Завершить</button>
+            </div>
+        </div>`;
+        
         $('#quizModalBody').html(html);
-        $('input[name="question"]').change(function() { userAnswers[q.id] = $(this).val(); updateProgressIndicator(); });
-        $('#prevBtn').click(() => { if (currentQuestionIndex > 0) { currentQuestionIndex--; renderCurrentQuestion(); } });
-        $('#nextBtn').click(() => { if (currentQuestionIndex < total-1) { currentQuestionIndex++; renderCurrentQuestion(); } });
-        $('#finishBtn').click(() => { if (Object.keys(userAnswers).length < total && !confirm('Вы ответили не на все вопросы. Всё равно завершить?')) return; submitQuiz(); });
+        
+        $('input[name="question"]').change(function() { 
+            userAnswers[q.id] = $(this).val(); 
+            updateProgressIndicator(); 
+        });
+        
+        $('#prevBtn').click(() => { 
+            if (currentQuestionIndex > 0) { 
+                currentQuestionIndex--; 
+                renderCurrentQuestion(); 
+            } 
+        });
+        
+        $('#nextBtn').click(() => { 
+            if (currentQuestionIndex < total-1) { 
+                currentQuestionIndex++; 
+                renderCurrentQuestion(); 
+            } 
+        });
+        
+        $('#finishBtn').click(() => { 
+            if (Object.keys(userAnswers).length < total && !confirm('Вы ответили не на все вопросы. Всё равно завершить?')) return; 
+            submitQuiz(); 
+        });
     }
 
     function updateProgressIndicator() {
-        const answeredCount = Object.keys(userAnswers).length, total = currentQuizData.questions.length;
+        const answeredCount = Object.keys(userAnswers).length, 
+              total = currentQuizData.questions.length;
         $('.quiz-progress').text(`Вопрос ${currentQuestionIndex+1} из ${total} | Ответов: ${answeredCount} из ${total}`);
     }
 
     function submitQuiz() {
         $.ajax({
-            url: 'ajax_quiz_handler.php', type: 'POST', data: JSON.stringify({ quiz_id: currentQuizData.quiz_id, answers: userAnswers }),
-            contentType: 'application/json', dataType: 'json',
+            url: 'ajax_quiz_handler.php', 
+            type: 'POST', 
+            data: JSON.stringify({ quiz_id: currentQuizData.quiz_id, answers: userAnswers }),
+            contentType: 'application/json', 
+            dataType: 'json',
             success: function(res) {
                 if (res.error) alert(res.error);
                 else {
-                    let stars = ''; for (let i=1;i<=5;i++) stars += `<span class="star-rating" data-value="${i}">☆</span>`;
-                    $('#quizModalBody').html(`<div class="quiz-result"><h3>Результат</h3><p>Вы набрали <strong>${res.score}</strong> из ${res.total} баллов.</p><p>Процент: <strong>${res.percentage}%</strong></p><div class="rating-section"><p>Оцените викторину:</p><div class="stars-container">${stars}</div><div id="ratingMessage"></div></div><button class="close-modal-btn">Закрыть</button></div>`);
+                    let stars = ''; 
+                    for (let i=1;i<=5;i++) stars += `<span class="star-rating" data-value="${i}">☆</span>`;
+                    $('#quizModalBody').html(`<div class="quiz-result">
+                        <h3>Результат</h3>
+                        <p>Вы набрали <strong>${res.score}</strong> из ${res.total} баллов.</p>
+                        <p>Процент: <strong>${res.percentage}%</strong></p>
+                        <div class="rating-section">
+                            <p>Оцените викторину:</p>
+                            <div class="stars-container">${stars}</div>
+                            <div id="ratingMessage"></div>
+                        </div>
+                        <button class="close-modal-btn">Закрыть</button>
+                    </div>`);
+                    
                     $('.star-rating').click(function() {
                         let rating = $(this).data('value');
-                        $('.star-rating').each(function(idx,el) { if($(el).data('value')<=rating) $(el).text('★').css('color','#FFD700'); else $(el).text('☆').css('color','#ccc'); });
-                        $.ajax({ url: 'ajax_quiz_handler.php', type: 'POST', data: JSON.stringify({ action: 'rate', quiz_id: currentQuizData.quiz_id, rating: rating }), contentType: 'application/json', dataType: 'json', success: (r) => $('#ratingMessage').text(r.error || 'Спасибо за оценку!'), error: () => $('#ratingMessage').text('Ошибка') });
+                        $('.star-rating').each(function(idx,el) { 
+                            if($(el).data('value')<=rating) $(el).text('★').css('color','#FFD700'); 
+                            else $(el).text('☆').css('color','#ccc'); 
+                        });
+                        $.ajax({ 
+                            url: 'ajax_quiz_handler.php', 
+                            type: 'POST', 
+                            data: JSON.stringify({ action: 'rate', quiz_id: currentQuizData.quiz_id, rating: rating }), 
+                            contentType: 'application/json', 
+                            dataType: 'json', 
+                            success: (r) => $('#ratingMessage').text(r.error || 'Спасибо за оценку!'), 
+                            error: () => $('#ratingMessage').text('Ошибка') 
+                        });
                     });
                 }
             }
         });
     }
 
-    function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
+    function escapeHtml(str) { 
+        if (!str) return ''; 
+        return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); 
+    }
 
-    function closeModals() { $('.modal-overlay').removeClass('active'); }
+    function closeModals() { 
+        $('.modal-overlay').removeClass('active'); 
+    }
+    
     $('.modal-close').click(closeModals);
-    $(window).click(function(e) { if ($(e.target).hasClass('modal-overlay')) closeModals(); });
+    $(window).click(function(e) { 
+        if ($(e.target).hasClass('modal-overlay')) closeModals(); 
+    });
     $(document).on('click', '.close-modal-btn', closeModals);
 
-    $('#loginBtn').click(function(e) { e.preventDefault(); closeModals(); $('#loginModalOverlay').addClass('active'); });
-    $('#registerBtn').click(function(e) { e.preventDefault(); closeModals(); $('#registerModalOverlay').addClass('active'); });
-    $('#switchToRegister').click(function(e) { e.preventDefault(); closeModals(); $('#registerModalOverlay').addClass('active'); });
-    $('#switchToLogin').click(function(e) { e.preventDefault(); closeModals(); $('#loginModalOverlay').addClass('active'); });
+    // ===== КНОПКИ ВХОДА/РЕГИСТРАЦИИ =====
+    $('#loginBtn').click(function(e) { 
+        e.preventDefault(); 
+        closeModals(); 
+        $('#loginModalOverlay').addClass('active'); 
+    });
+    $('#registerBtn').click(function(e) { 
+        e.preventDefault(); 
+        closeModals(); 
+        $('#registerModalOverlay').addClass('active'); 
+    });
+    $('#switchToRegister').click(function(e) { 
+        e.preventDefault(); 
+        closeModals(); 
+        $('#registerModalOverlay').addClass('active'); 
+    });
+    $('#switchToLogin').click(function(e) { 
+        e.preventDefault(); 
+        closeModals(); 
+        $('#loginModalOverlay').addClass('active'); 
+    });
+
 });
 </script>
+
 </body>
 </html>
