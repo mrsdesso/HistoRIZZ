@@ -173,6 +173,11 @@ session_start();
 <div id="quizModalOverlay" class="modal-overlay">
     <div class="modal" style="width: 700px; max-width: 95%;">
         <span class="modal-close">&times;</span>
+        <button class="modal-save" id="saveQuizBtn" title="Сохранить викторину">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+        </button>
         <div id="quizModalBody"></div>
     </div>
 </div>
@@ -184,17 +189,14 @@ $(document).ready(function() {
     // ============================================================
     // ВИКТОРИНЫ
     // ============================================================
-     // переменные для хранения состояния текущей викторины
     let currentQuizData = null, currentQuestionIndex = 0, userAnswers = {};
 
-     // обработчик события нажатия на кнопку "Играть" на карточке викторины
     $('.play-quiz').click(function(e) {
         e.preventDefault();
         let quizId = $(this).closest('.quiz-card').data('quiz-id');
         if (quizId) loadQuiz(quizId);
     });
 
-    // загрузка викторины
     function loadQuiz(quizId) {
         $('#quizModalBody').html('<div style="text-align:center; padding:20px;">Загрузка...</div>');
         $('#quizModalOverlay').addClass('active');
@@ -204,23 +206,43 @@ $(document).ready(function() {
             data: { id: quizId },
             dataType: 'json',
             success: function(data) {
+                console.log('Ответ от сервера:', data);
+                
                 if (data.error) {
                     $('#quizModalBody').html('<p>Ошибка: ' + data.error + '</p>');
                     return;
                 }
+                
+                if (!data.questions || data.questions.length === 0) {
+                    $('#quizModalBody').html('<p>В этой викторине нет вопросов.</p>');
+                    return;
+                }
+                
                 currentQuizData = data;
                 currentQuestionIndex = 0;
                 userAnswers = {};
                 renderCurrentQuestion();
+                
+                // Проверка статуса закладки
+                checkBookmarkStatus(quizId);
             },
-            error: function() {
-                $('#quizModalBody').html('<p>Ошибка загрузки викторины.</p>');
+            error: function(xhr) {
+                console.log('Ошибка:', xhr.responseText);
+                $('#quizModalBody').html('<p>Ошибка загрузки викторины: ' + xhr.status + ' ' + xhr.statusText + '<br><small>Ответ сервера: ' + xhr.responseText + '</small></p>');
             }
         });
     }
 
-    // рендер текущего вопроса
     function renderCurrentQuestion() {
+        console.log('renderCurrentQuestion вызван');
+        console.log('currentQuizData:', currentQuizData);
+        
+        if (!currentQuizData || !currentQuizData.questions || currentQuizData.questions.length === 0) {
+            console.log('Ошибка: данные викторины не загружены');
+            $('#quizModalBody').html('<p>Ошибка: данные викторины не загружены</p>');
+            return;
+        }
+        
         const total = currentQuizData.questions.length;
         const q = currentQuizData.questions[currentQuestionIndex];
         const savedAnswer = userAnswers[q.id] || '';
@@ -236,7 +258,6 @@ $(document).ready(function() {
             <div class="quiz-question-text">${escapeHtml(q.text)}</div>
             <div class="quiz-answers-list">`;
 
-        // вывод вариантJD ответов
         q.answers.forEach(a => {
             const checked = (savedAnswer === a.answer) ? 'checked' : '';
             html += `<label class="quiz-answer-option">
@@ -245,7 +266,6 @@ $(document).ready(function() {
             </label>`;
         });
 
-        // кнопки   
         html += `</div>
             <div class="quiz-navigation">
                 <button type="button" class="quiz-nav-btn" id="prevBtn" ${currentQuestionIndex===0?'disabled':''}>← Назад</button>`;
@@ -259,13 +279,11 @@ $(document).ready(function() {
 
         $('#quizModalBody').html(html);
 
-         // выбор ответов
         $('input[name="question"]').change(function() {
             userAnswers[q.id] = $(this).val();
             updateProgressIndicator();
         });
 
-         // обработка кнопок
         $('#prevBtn').click(() => {
             if (currentQuestionIndex > 0) {
                 currentQuestionIndex--;
@@ -280,7 +298,6 @@ $(document).ready(function() {
             }
         });
 
-         // завершение викторины
         $('#finishBtn').click(() => {
             if (Object.keys(userAnswers).length < total) {
                 if (!confirm('Вы ответили не на все вопросы. Всё равно завершить?')) return;
@@ -289,14 +306,12 @@ $(document).ready(function() {
         });
     }
 
-    // обновление индикатора прогресса в заголовке
     function updateProgressIndicator() {
         const answeredCount = Object.keys(userAnswers).length;
         const total = currentQuizData.questions.length;
         $('.quiz-progress').text(`Вопрос ${currentQuestionIndex+1} из ${total} | Ответов: ${answeredCount} из ${total}`);
     }
 
-    // отправка результатов викторины на сервер
     function submitQuiz() {
         $.ajax({
             url: 'ajax_quiz_handler.php',
@@ -329,7 +344,6 @@ $(document).ready(function() {
                         </div>
                     `);
 
-                    // обработчик клика по звёздам для оценки
                     $('.star-rating').click(function() {
                         let rating = $(this).data('value');
                         $('.star-rating').each(function(idx, el) {
@@ -339,7 +353,6 @@ $(document).ready(function() {
                                 $(el).text('☆').css('color', '#ccc');
                             }
                         });
-                        // отправка оценки на сервер
                         $.ajax({
                             url: 'ajax_quiz_handler.php',
                             type: 'POST',
@@ -359,6 +372,87 @@ $(document).ready(function() {
         });
     }
 
+    // сохранение викторины
+    $(document).on('click', '#saveQuizBtn', function(e) {
+        e.stopPropagation();
+        
+        if (!currentQuizData) {
+            alert('Викторина ещё не загружена');
+            return;
+        }
+        
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            alert('Пожалуйста, войдите, чтобы сохранить викторину.');
+            $('#quizModalOverlay').removeClass('active');
+            setTimeout(function() {
+                $('#loginModalOverlay').addClass('active');
+            }, 300);
+            return;
+        <?php endif; ?>
+        
+        var quizId = currentQuizData.quiz_id;
+        if (!quizId) {
+            alert('Ошибка: ID викторины не найден');
+            return;
+        }
+        
+        var $btn = $(this);
+        var isSaved = $btn.hasClass('saved');
+        
+        $.ajax({
+            url: 'ajax_bookmark.php',
+            type: 'POST',
+            data: {
+                action: isSaved ? 'remove' : 'add',
+                item_type: 'quiz',
+                item_id: quizId
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    if (isSaved) {
+                        $btn.removeClass('saved');
+                        $btn.find('svg').css('fill', 'none');
+                    } else {
+                        $btn.addClass('saved');
+                        $btn.find('svg').css('fill', 'var(--accent-orange)');
+                    }
+                } else {
+                    alert(response.error || 'Ошибка сохранения');
+                }
+            },
+            error: function(xhr) {
+                console.log('Ошибка:', xhr.responseText);
+                alert('Ошибка соединения: ' + xhr.status + ' ' + xhr.statusText);
+            }
+        });
+    });
+
+    function checkBookmarkStatus(quizId) {
+        $.ajax({
+            url: 'ajax_bookmark.php',
+            type: 'GET',
+            data: {
+                action: 'check',
+                item_type: 'quiz',
+                item_id: quizId
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.saved) {
+                    $('#saveQuizBtn').addClass('saved');
+                    $('#saveQuizBtn').find('svg').css('fill', 'var(--accent-orange)');
+                } else {
+                    $('#saveQuizBtn').removeClass('saved');
+                    $('#saveQuizBtn').find('svg').css('fill', 'none');
+                }
+            },
+            error: function(xhr) {
+                console.log('Ошибка проверки закладки:', xhr.responseText);
+            }
+        });
+    }
+
     //  функция для экранирования HTML, чтобы избежать XSS
     function escapeHtml(str) {
         if (!str) return '';
@@ -372,6 +466,7 @@ $(document).ready(function() {
 
 });
 </script>
+
 
 </body>
 </html>
