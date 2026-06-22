@@ -212,23 +212,6 @@ $(document).ready(function() {
     $('#switchToRegister').click(function(e) { e.preventDefault(); closeModals(); $('#registerModalOverlay').addClass('active'); });
     $('#switchToLogin').click(function(e) { e.preventDefault(); closeModals(); $('#loginModalOverlay').addClass('active'); });
 });
-
-// AJAX для логина и регистрации (если не обрабатываются в auth.js)
-$('#loginForm').submit(function(e) {
-    e.preventDefault();
-    $.post('ajax_auth.php', $(this).serialize() + '&action=login', function(data) {
-        if (data.success) location.reload(); else alert(data.error);
-    }, 'json');
-});
-$('#registerForm').submit(function(e) {
-    e.preventDefault();
-    var pwd = $('input[name="password"]').val();
-    var confirm = $('input[name="password_confirm"]').val();
-    if (pwd !== confirm) { alert('Пароли не совпадают'); return; }
-    $.post('ajax_auth.php', $(this).serialize() + '&action=register', function(data) {
-        if (data.success) location.reload(); else alert(data.error);
-    }, 'json');
-});
 </script>
 </body>
 </html>
