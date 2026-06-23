@@ -115,35 +115,25 @@ $popular_places = array_slice($locations, 0, 4);
         <div id="map" style="width: 100%; height: 500px; border-radius: 24px; border: 2px solid rgba(233,103,43,0.3); margin-bottom: 40px;"></div>
 
         <!-- ===== ПОПУЛЯРНЫЕ МЕСТА ===== -->
-        <section class="popular-places">
-            <h2 class="section-title">Популярные исторические места</h2>
-            <div class="section-line"></div>
-            <?php if (!empty($popular_places)): ?>
-            <div class="popular-grid">
-                <?php foreach ($popular_places as $place): ?>
-                    <div class="popular-card">
-                        <div class="popular-image">
-                            <?php if (!empty($place['image_url'])): ?>
-                                <!-- если есть картинка -->
-                                <img src="<?= htmlspecialchars($place['image_url']) ?>" alt="<?= htmlspecialchars($place['name']) ?>">
-                            <?php else: ?>
-                                <!-- если нет, то икнка -->
-                                <div class="no-image">🏛️</div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="popular-content">
-                            <div class="popular-title"><?= htmlspecialchars($place['name']) ?></div>
-                            <div class="popular-meta"><?= htmlspecialchars($place['region'] ?? '') ?>, <?= htmlspecialchars($place['period_name'] ?? '') ?></div>
-                        </div>
+        <?php if (!empty($locations)): ?>
+        <h2 class="section-title">Популярные исторические места</h2>
+        <div class="locations-grid">
+            <?php foreach ($locations as $loc): ?>
+                <div class="location-card" style="background-image: url('<?= htmlspecialchars($loc['image_url'] ?? '') ?>');">
+                    <div class="location-info">
+                        <div class="location-name"><?= htmlspecialchars($loc['name']) ?></div>
+                        <div class="location-country"><?= htmlspecialchars($loc['region'] ?? '') ?>, <?= htmlspecialchars($loc['period_name'] ?? '') ?></div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-            <?php else: ?>
-            <p style="text-align: center; color: var(--text-gray); padding: 20px 0;">
-                Популярные места будут добавлены скоро
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <div class="locations-empty">
+            <p style="text-align: center; color: var(--text-gray); padding: 40px 0; font-size: 18px;">
+                🏛️ Исторические места будут добавлены скоро
             </p>
-            <?php endif; ?>
-        </section>
+        </div>
+        <?php endif; ?>
 
     </div>
 </main>
