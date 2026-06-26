@@ -1,48 +1,291 @@
 <?php
-// АДМИНИСТРАТИВНАЯ ПАНЕЛЬ
+//АДМИНИСТРАТИВНАЯ ПАНЕЛЬ
 
-// подключение к бд
 require_once 'config.php';
-//запуск сессии для проверки авторизованного пользователя
 session_start();
 
-// проверка авторизации
+// Проверка авторизации
 if (!isset($_SESSION['user_id'])) {
     header('Location: main.php');
     exit;
 }
 
-// проверка на роль админа
+// Проверка роли администратора
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     header('Location: lk.php');
     exit;
 }
 
-// СТАТИСТИКА ДЛЯ ДАШБОРДА
+// перевод названий таблиц на русскиий
+$tableNamesRu = [
+    'users' => 'Пользователи',
+    'periods' => 'Периоды',
+    'lichnosti' => 'Личности',
+    'lich_categories' => 'Категории личностей',
+    'articles' => 'Статьи',
+    'article_categories' => 'Категории статей',
+    'article_comments' => 'Комментарии к статьям',
+    'article_likes' => 'Лайки статей',
+    'quizzes' => 'Викторины',
+    'quiz_categories' => 'Категории викторин',
+    'questions' => 'Вопросы',
+    'answers' => 'Ответы',
+    'quiz_ratings' => 'Оценки викторин',
+    'user_results' => 'Результаты пользователей',
+    'locations' => 'Локации',
+    'events' => 'События',
+    'bookmarks' => 'Закладки',
+    'translations' => 'Переводы'
+];
 
-$stats = [];
-// все пользователи
-$result = $conn->query("SELECT COUNT(*) as count FROM users");
-$stats['users'] = $result ? $result->fetch_assoc()['count'] : 0;
+// перевод названий представлений на русскиий
+$viewNamesRu = [
+    'view_articles_by_category' => 'Статьи по категориям',
+    'view_events_by_period' => 'События по периодам',
+    'view_locations_by_region' => 'Локации по регионам',
+    'view_personalities_by_period' => 'Личности по периодам',
+    'view_quizzes_list' => 'Список викторин'
+];
 
-// все статьи
-$result = $conn->query("SELECT COUNT(*) as count FROM articles");
-$stats['articles'] = $result ? $result->fetch_assoc()['count'] : 0;
+// фильтры
+$viewFilters = [
+    'view_articles_by_category' => [
+        'field' => 'category_name',
+        'label' => 'Категория',
+        'options' => []
+    ],
+    'view_events_by_period' => [
+        'field' => 'period_name',
+        'label' => 'Период',
+        'options' => []
+    ],
+    'view_locations_by_region' => [
+        'field' => 'region',
+        'label' => 'Регион',
+        'options' => []
+    ],
+    'view_personalities_by_period' => [
+        'field' => 'period_name',
+        'label' => 'Период',
+        'options' => []
+    ],
+    'view_quizzes_list' => [
+        'field' => 'category_name',
+        'label' => 'Категория',
+        'options' => []
+    ]
+];
 
-// все викторины
-$result = $conn->query("SELECT COUNT(*) as count FROM quizzes");
-$stats['quizzes'] = $result ? $result->fetch_assoc()['count'] : 0;
+// список таблиц
+$tables = [];
+$result = $conn->query("SHOW FULL TABLES");
+while ($row = $result->fetch_row()) {
+    $tableName = $row[0];
+    $tableType = $row[1];
+    if ($tableType !== 'VIEW') {
+        $tables[] = $tableName;
+    }
+}
 
-// средний рейтинг викторин
-$result = $conn->query("SELECT COALESCE(ROUND(AVG(rating), 1), 0) as avg FROM quiz_ratings");
-$stats['avg_rating'] = $result ? $result->fetch_assoc()['avg'] : 0;
+//  представления для просмотра
+$views = [];
+$result = $conn->query("SHOW FULL TABLES");
+while ($row = $result->fetch_row()) {
+    if ($row[1] === 'VIEW') {
+        $views[] = $row[0];
+    }
+}
 
-// 5 последних зарегистрированных пользователей
-$users = [];
-$result = $conn->query("SELECT ID_user, name, surname, email, phone, created_at FROM users ORDER BY created_at DESC LIMIT 5");
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $users[] = $row;
+// обработка действий с таблицами   
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+$table = isset($_GET['table']) ? $_GET['table'] : '';
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$filterValue = isset($_GET['filter']) ? $_GET['filter'] : '';
+$message = '';
+$messageType = '';
+
+// фильтры для представленй
+foreach ($viewFilters as $viewName => &$filter) {
+    if (in_array($viewName, $views)) {
+        $sql = "SELECT DISTINCT {$filter['field']} FROM `$viewName` WHERE {$filter['field']} IS NOT NULL ORDER BY {$filter['field']}";
+        $result = $conn->query($sql);
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                if (!empty($row[$filter['field']])) {
+                    $filter['options'][] = $row[$filter['field']];
+                }
+            }
+        }
+    }
+}
+unset($filter);
+
+// данные для редактирования
+$editData = null;
+if ($action === 'edit' && $table && $id > 0) {
+    $pkResult = $conn->query("SHOW KEYS FROM `$table` WHERE Key_name = 'PRIMARY'");
+    $pkRow = $pkResult->fetch_assoc();
+    $primaryKey = $pkRow ? $pkRow['Column_name'] : 'ID_' . $table;
+    
+    $stmt = $conn->prepare("SELECT * FROM `$table` WHERE `$primaryKey` = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $editData = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+}
+
+// Удаление записи
+if ($action === 'delete' && $table && $id > 0) {
+    $pkResult = $conn->query("SHOW KEYS FROM `$table` WHERE Key_name = 'PRIMARY'");
+    $pkRow = $pkResult->fetch_assoc();
+    $primaryKey = $pkRow ? $pkRow['Column_name'] : 'ID_' . $table;
+    
+    $stmt = $conn->prepare("DELETE FROM `$table` WHERE `$primaryKey` = ?");
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) {
+        $message = 'Запись успешно удалена!';
+        $messageType = 'success';
+    } else {
+        $message = 'Ошибка удаления: ' . $stmt->error;
+        $messageType = 'error';
+    }
+    $stmt->close();
+}
+
+// Добавление записи
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_record']) && $table) {
+    $columns = [];
+    $colResult = $conn->query("SHOW COLUMNS FROM `$table`");
+    while ($col = $colResult->fetch_assoc()) {
+        $columns[] = $col['Field'];
+    }
+    
+    $fields = [];
+    $values = [];
+    $placeholders = [];
+    $types = '';
+    
+    foreach ($columns as $col) {
+        if (strpos($col, 'ID_') === 0 && $col !== 'ID_user' && $col !== 'ID_period' && $col !== 'ID_article') {
+            continue;
+        }
+        if (isset($_POST[$col]) && $_POST[$col] !== '') {
+            $fields[] = $col;
+            $values[] = $_POST[$col];
+            $placeholders[] = '?';
+            if (is_numeric($_POST[$col])) {
+                $types .= 'i';
+            } else {
+                $types .= 's';
+            }
+        }
+    }
+    
+    if (!empty($fields)) {
+        $sql = "INSERT INTO `$table` (`" . implode('`, `', $fields) . "`) VALUES (" . implode(', ', $placeholders) . ")";
+        $stmt = $conn->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param($types, ...$values);
+            if ($stmt->execute()) {
+                $message = 'Запись успешно добавлена!';
+                $messageType = 'success';
+            } else {
+                $message = 'Ошибка добавления: ' . $stmt->error;
+                $messageType = 'error';
+            }
+            $stmt->close();
+        } else {
+            $message = 'Ошибка подготовки запроса: ' . $conn->error;
+            $messageType = 'error';
+        }
+    }
+}
+
+// Обновление записи
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_record']) && $table && $id > 0) {
+    $pkResult = $conn->query("SHOW KEYS FROM `$table` WHERE Key_name = 'PRIMARY'");
+    $pkRow = $pkResult->fetch_assoc();
+    $primaryKey = $pkRow ? $pkRow['Column_name'] : 'ID_' . $table;
+    
+    $columns = [];
+    $colResult = $conn->query("SHOW COLUMNS FROM `$table`");
+    while ($col = $colResult->fetch_assoc()) {
+        $columns[] = $col['Field'];
+    }
+    
+    $setParts = [];
+    $values = [];
+    $types = '';
+    
+    foreach ($columns as $col) {
+        if ($col === $primaryKey) continue;
+        if (isset($_POST[$col]) && $_POST[$col] !== '') {
+            $setParts[] = "`$col` = ?";
+            $values[] = $_POST[$col];
+            if (is_numeric($_POST[$col])) {
+                $types .= 'i';
+            } else {
+                $types .= 's';
+            }
+        }
+    }
+    
+    $values[] = $id;
+    $types .= 'i';
+    
+    if (!empty($setParts)) {
+        $sql = "UPDATE `$table` SET " . implode(', ', $setParts) . " WHERE `$primaryKey` = ?";
+        $stmt = $conn->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param($types, ...$values);
+            if ($stmt->execute()) {
+                $message = 'Запись успешно обновлена!';
+                $messageType = 'success';
+            } else {
+                $message = 'Ошибка обновления: ' . $stmt->error;
+                $messageType = 'error';
+            }
+            $stmt->close();
+        } else {
+            $message = 'Ошибка подготовки запроса: ' . $conn->error;
+            $messageType = 'error';
+        }
+    }
+}
+
+// Получение данных для выбранной таблицы
+$tableData = [];
+$columns = [];
+$primaryKey = 'ID_' . $table;
+
+if ($table) {
+    // Проверяем, является ли таблица представлением
+    $isView = in_array($table, $views);
+    
+    $colResult = $conn->query("SHOW COLUMNS FROM `$table`");
+    while ($col = $colResult->fetch_assoc()) {
+        $columns[] = $col['Field'];
+    }
+    
+    $pkResult = $conn->query("SHOW KEYS FROM `$table` WHERE Key_name = 'PRIMARY'");
+    $pkRow = $pkResult->fetch_assoc();
+    $primaryKey = $pkRow ? $pkRow['Column_name'] : 'ID_' . $table;
+    
+    $sql = "SELECT * FROM `$table`";
+    
+    // Если это представление и есть фильтр
+    if ($isView && isset($viewFilters[$table]) && !empty($filterValue)) {
+        $filterField = $viewFilters[$table]['field'];
+        $sql .= " WHERE `$filterField` = '" . $conn->real_escape_string($filterValue) . "'";
+    }
+    
+    $sql .= " LIMIT 50";
+    
+    $result = $conn->query($sql);
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $tableData[] = $row;
+        }
     }
 }
 ?>
@@ -57,138 +300,253 @@ if ($result) {
     <link rel="stylesheet" href="css/footer.css">
     <link rel="stylesheet" href="css/admin.css">
     
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&family=Prosto+One&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Prosto+One&display=swap" rel="stylesheet">
 
     <link rel="icon" href="images/favicon.svg">
-    <!-- подключение jQuery для AJAX-запросов и манипуляции с DOM -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
 
-<!-- подключение навигации -->
 <?php include 'header.php'; ?>
 
 <main>
     <div class="admin-wrapper">
 
-        <!-- ===== БОКОВОЕ МЕНЮ ===== -->
+        <!-- боковое меню -->
         <aside class="admin-sidebar">
             <h2>Admin Panel</h2>
             <div class="sidebar-header">
                 <h3>МЕНЮ</h3>
             </div>
             <nav class="sidebar-nav">
-                <a href="admin.php" class="active">Дашборд</a>
-                <a href="#" class="menu-item" data-page="users">Пользователи</a>
-                <a href="#" class="menu-item" data-page="periods">Периоды</a>
-                <a href="#" class="menu-item" data-page="personalities">Личности</a>
-                <a href="#" class="menu-item" data-page="quizzes">Викторины</a>
+                <a href="admin.php" <?= !isset($_GET['table']) && !isset($_GET['views']) ? 'class="active"' : '' ?>>Дашборд</a>
+                <?php foreach ($tables as $t): 
+                    $displayName = $tableNamesRu[$t] ?? ucfirst($t);
+                ?>
+                    <a href="admin.php?table=<?= $t ?>" <?= (isset($_GET['table']) && $_GET['table'] === $t) ? 'class="active"' : '' ?>>
+                        <?= htmlspecialchars($displayName) ?>
+                    </a>
+                <?php endforeach; ?>
+                <a href="admin.php?views=1" <?= isset($_GET['views']) ? 'class="active"' : '' ?>>Представления</a>
             </nav>
         </aside>
             
-        <!-- ===== ОСНОВНОЙ КОНТЕНТ ===== -->
         <div class="admin-content">
-        <div class="admin-header">
-            <div class="admin-header-left">
-                <h1>Дашборд</h1>
-                <div class="bio-divider"></div>
+            <div class="admin-header">
+                <div class="admin-header-left">
+                    <?php if (isset($_GET['views'])): ?>
+                        <h1>Представления</h1>
+                    <?php elseif (isset($_GET['table']) && isset($viewNamesRu[$_GET['table']])): ?>
+                        <h1><?= htmlspecialchars($viewNamesRu[$_GET['table']]) ?></h1>
+                    <?php elseif (isset($_GET['table']) && isset($tableNamesRu[$_GET['table']])): ?>
+                        <h1><?= htmlspecialchars($tableNamesRu[$_GET['table']]) ?></h1>
+                    <?php elseif (isset($_GET['table'])): ?>
+                        <h1><?= ucfirst(htmlspecialchars($_GET['table'])) ?></h1>
+                    <?php else: ?>
+                        <h1>Дашборд</h1>
+                    <?php endif; ?>
+                    <div class="bio-divider"></div>
+                </div>
+                <span class="admin-date"><?= date('d.m.Y') ?></span>
             </div>
-            <span class="admin-date"><?= date('d.m.Y') ?></span>
-        </div>
-            
-            <!-- ===== СТАТИСТИКА ===== -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number"><?= number_format($stats['users']) ?></div>
-                    <div class="stat-label">Всего пользователей</div>
+
+            <?php if ($message): ?>
+                <div style="padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; background: <?= $messageType === 'success' ? 'rgba(76,175,80,0.15)' : 'rgba(227,38,54,0.15)'; ?>; border: 1px solid <?= $messageType === 'success' ? '#4caf50' : '#e32636'; ?>; color: <?= $messageType === 'success' ? '#4caf50' : '#e32636'; ?>;">
+                    <?= htmlspecialchars($message) ?>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number"><?= number_format($stats['articles']) ?></div>
-                    <div class="stat-label">Статей опубликовано</div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET['views'])): ?>
+                <!-- представлений -->
+                <div style="background: #1A1A2A; border-radius: 16px; padding: 24px; border: 1px solid rgba(233,103,43,0.1);">
+                    <h2 style="font-family: var(--font-heading); font-size: 22px; color: var(--text-white); margin: 0 0 20px 0;">Список представлений</h2>
+                    <?php foreach ($views as $view): 
+                        $displayName = $viewNamesRu[$view] ?? $view;
+                    ?>
+                        <div style="padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-white); font-family: var(--font-main);"><?= htmlspecialchars($displayName) ?></span>
+                            <a href="admin.php?table=<?= $view ?>" style="color: var(--accent-orange); text-decoration: none; font-size: 14px;">→ Просмотр</a>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number"><?= number_format($stats['quizzes']) ?></div>
-                    <div class="stat-label">Пройденных викторин</div>
+            <?php elseif (!isset($_GET['table'])): ?>
+                <!-- дашборд -->
+                <?php
+                $stats = [];
+                foreach ($tables as $t) {
+                    $result = $conn->query("SELECT COUNT(*) as count FROM `$t`");
+                    $stats[$t] = $result ? $result->fetch_assoc()['count'] : 0;
+                }
+                ?>
+                <div class="stats-grid">
+                    <?php foreach ($tables as $t): 
+                        $displayName = $tableNamesRu[$t] ?? ucfirst($t);
+                    ?>
+                        <a href="admin.php?table=<?= $t ?>" class="stat-card" style="text-decoration: none; display: block;">
+                            <div class="stat-number"><?= number_format($stats[$t] ?? 0) ?></div>
+                            <div class="stat-label"><?= htmlspecialchars($displayName) ?></div>
+                        </a>
+                    <?php endforeach; ?>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number"><?= $stats['avg_rating'] ?></div>
-                    <div class="stat-label">Средний рейтинг</div>
-                </div>
-            </div>
-            
-            <!-- ===== ПОСЛЕДНИЕ ПОЛЬЗОВАТЕЛИ ===== -->
-            <div class="table-wrapper">
-                <h2 class="table-title">Последние зарегистрированные пользователи</h2>
-                <table class="admin-table" id="usersTable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Имя</th>
-                            <th>Email</th>
-                            <th>Телефон</th>
-                            <th>Дата регистрации</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                        <?php if (!empty($users)): ?>
-                            <!-- вывод пользователя в отдельную строку -->
-                            <?php foreach ($users as $user): ?>
-                                <tr data-user-id="<?= $user['ID_user'] ?>">
-                                    <td>#<?= $user['ID_user'] ?></td>
-                                    <td class="user-name"><?= htmlspecialchars($user['name'] . ' ' . $user['surname']) ?></td>
-                                    <td class="user-email"><?= htmlspecialchars($user['email']) ?></td>
-                                    <td class="user-phone"><?= htmlspecialchars($user['phone'] ?? '—') ?></td>
-                                    <td><?= date('d.m.Y', strtotime($user['created_at'])) ?></td>
-                                    <td>
-                                        <!-- Кнопки для редактирования и удаления -->
-                                        <a href="#" class="action-btn edit-btn" data-id="<?= $user['ID_user'] ?>">редактировать</a>
-                                        <a href="#" class="action-btn delete-btn" data-id="<?= $user['ID_user'] ?>">удалить</a>
-                                    </td>
-                                </tr>
+            <?php else: 
+                // управление таблицами
+                $table = $_GET['table'];
+                $isView = in_array($table, $views);
+                $tableDisplayName = $viewNamesRu[$table] ?? $tableNamesRu[$table] ?? ucfirst($table);
+            ?>
+                
+                <!-- Фильтр для представлений -->
+                <?php if ($isView && isset($viewFilters[$table]) && !empty($viewFilters[$table]['options'])): ?>
+                    <div style="background: #1A1A2A; border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid rgba(233,103,43,0.1); display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <label style="color: var(--text-gray); font-weight: 500; font-size: 14px;">Фильтр по <?= $viewFilters[$table]['label'] ?>:</label>
+                        <select onchange="window.location.href='admin.php?table=<?= $table ?>&filter='+this.value" style="padding: 8px 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(233,103,43,0.5); border-radius: 40px; color: var(--text-white); font-family: var(--font-main); outline: none;">
+                            <option value="">Все</option>
+                            <?php foreach ($viewFilters[$table]['options'] as $option): ?>
+                                <option value="<?= htmlspecialchars($option) ?>" <?= $filterValue === $option ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($option) ?>
+                                </option>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:30px;">
-                                    Пользователи не найдены
-                                </td>
-                            </tr>
+                        </select>
+                        <?php if ($filterValue): ?>
+                            <a href="admin.php?table=<?= $table ?>" style="color: var(--accent-orange); text-decoration: none; font-size: 14px;">✕ Сбросить</a>
                         <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-                        
-            <!-- ===== БЫСТРЫЕ ДЕЙСТВИЯ ===== -->
-            <div class="quick-actions">
-                <h2 class="quick-title">Быстрые действия</h2>
-                <div class="quick-grid">
-                    <a href="#" class="quick-card">
-                        <div class="quick-label">Добавить статью</div>
-                        <div class="quick-desc">Новый контент</div>
-                    </a>
-                    <a href="#" class="quick-card">
-                        <div class="quick-label">Создать викторину</div>
-                        <div class="quick-desc">Новые вопросы</div>
-                    </a>
-                    <a href="#" class="quick-card">
-                        <div class="quick-label">Управление ролями</div>
-                        <div class="quick-desc">Назначить администратора</div>
-                    </a>
-                    <a href="#" class="quick-card">
-                        <div class="quick-label">Экспорт данных</div>
-                        <div class="quick-desc">CSV / JSON</div>
-                    </a>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!$isView): ?>
+                <!-- Кнопка добавления (только для таблиц) -->
+                <div style="margin-bottom: 20px;">
+                    <button onclick="document.getElementById('addForm').style.display='block'" class="btn-save" style="padding: 10px 24px; background: var(--accent-orange); color: #fff; border: none; border-radius: 40px; cursor: pointer; font-weight: 600;">
+                        + Добавить запись
+                    </button>
                 </div>
-            </div>
-            
+
+                <!-- Форма добавления (только для таблиц) -->
+                <div id="addForm" style="display: none; background: #1A1A2A; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid rgba(233,103,43,0.1);">
+                    <h3 style="color: var(--text-white); margin-bottom: 16px;">Добавить запись в <?= htmlspecialchars($tableDisplayName) ?></h3>
+                    <form method="POST">
+                        <input type="hidden" name="add_record" value="1">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
+                            <?php
+                            $colResult = $conn->query("SHOW COLUMNS FROM `$table`");
+                            $colNames = [];
+                            while ($col = $colResult->fetch_assoc()) {
+                                $colNames[] = $col['Field'];
+                            }
+                            $pkResult = $conn->query("SHOW KEYS FROM `$table` WHERE Key_name = 'PRIMARY'");
+                            $pkRow = $pkResult->fetch_assoc();
+                            $primaryKey = $pkRow ? $pkRow['Column_name'] : 'ID_' . $table;
+                            
+                            foreach ($colNames as $col):
+                                if (strpos($col, 'ID_') === 0 && $col !== 'ID_user' && $col !== 'ID_period' && $col !== 'ID_article' && $col !== 'ID_quiz' && $col !== 'ID_question' && $col !== 'ID_lichnost' && $col !== 'ID_location' && $col !== 'ID_event') continue;
+                                if ($col === 'created_at' || $col === 'date_taken' || $col === 'percent') continue;
+                            ?>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label style="color: var(--text-gray); font-size: 13px;"><?= htmlspecialchars($col) ?></label>
+                                    <input type="text" name="<?= htmlspecialchars($col) ?>" placeholder="<?= htmlspecialchars($col) ?>" style="padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(233,103,43,0.3); border-radius: 8px; color: white; font-family: var(--font-main);">
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div style="margin-top: 16px; display: flex; gap: 12px;">
+                            <button type="submit" style="padding: 10px 24px; background: var(--accent-orange); color: #fff; border: none; border-radius: 40px; cursor: pointer; font-weight: 600;">Сохранить</button>
+                            <button type="button" onclick="document.getElementById('addForm').style.display='none'" style="padding: 10px 24px; background: transparent; border: 1px solid var(--text-gray); color: var(--text-gray); border-radius: 40px; cursor: pointer;">Отмена</button>
+                        </div>
+                    </form>
+                </div>
+                <?php endif; ?>
+
+                <!-- Таблица данных -->
+                <div class="table-wrapper" style="overflow-x: auto;">
+                    <?php if ($isView): ?>
+                        <div style="margin-bottom: 16px; padding: 12px 16px; background: rgba(0,240,255,0.05); border-radius: 8px; border-left: 3px solid #00F0FF;">
+                            <span style="color: var(--text-gray); font-size: 14px;">Это представление. Данные доступны только для просмотра.</span>
+                        </div>
+                    <?php endif; ?>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <?php foreach ($columns as $col): ?>
+                                    <th><?= htmlspecialchars($col) ?></th>
+                                <?php endforeach; ?>
+                                <?php if (!$isView): ?>
+                                    <th>Действия</th>
+                                <?php endif; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($tableData)): ?>
+                                <?php foreach ($tableData as $row): ?>
+                                    <tr>
+                                        <?php foreach ($columns as $col): ?>
+                                            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                <?php 
+                                                $val = $row[$col];
+                                                if (is_null($val)) {
+                                                    echo '<span style="color: var(--text-muted);">NULL</span>';
+                                                } elseif (strlen($val) > 50) {
+                                                    echo htmlspecialchars(substr($val, 0, 50)) . '...';
+                                                } else {
+                                                    echo htmlspecialchars($val);
+                                                }
+                                                ?>
+                                            </td>
+                                        <?php endforeach; ?>
+                                        <?php if (!$isView): ?>
+                                            <td>
+                                                <a href="admin.php?table=<?= $table ?>&action=edit&id=<?= $row[$primaryKey] ?>" class="action-btn edit-btn">✏️</a>
+                                                <a href="admin.php?table=<?= $table ?>&action=delete&id=<?= $row[$primaryKey] ?>" class="action-btn delete-btn" onclick="return confirm('Удалить запись?')">🗑️</a>
+                                            </td>
+                                        <?php endif; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="<?= count($columns) + ($isView ? 0 : 1) ?>" style="text-align:center; color:var(--text-muted); padding:30px;">Нет данных</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Форма редактирования (только для таблиц) -->
+                <?php if (!$isView && $editData && $action === 'edit'): ?>
+                <div style="background: #1A1A2A; border-radius: 16px; padding: 24px; margin-top: 24px; border: 1px solid rgba(233,103,43,0.1);">
+                    <h3 style="color: var(--text-white); margin-bottom: 16px;">Редактировать запись в <?= htmlspecialchars($tableDisplayName) ?></h3>
+                    <form method="POST">
+                        <input type="hidden" name="edit_record" value="1">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
+                            <?php foreach ($columns as $col): ?>
+                                <?php if ($col === $primaryKey) continue; ?>
+                                <?php if ($col === 'created_at' || $col === 'date_taken' || $col === 'percent') continue; ?>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label style="color: var(--text-gray); font-size: 13px;"><?= htmlspecialchars($col) ?></label>
+                                    <?php if (strpos($col, 'password') !== false): ?>
+                                        <input type="password" name="<?= htmlspecialchars($col) ?>" value="<?= htmlspecialchars($editData[$col] ?? '') ?>" style="padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(233,103,43,0.3); border-radius: 8px; color: white; font-family: var(--font-main);">
+                                    <?php elseif (strpos($col, 'description') !== false || strpos($col, 'content') !== false || strpos($col, 'comment') !== false): ?>
+                                        <textarea name="<?= htmlspecialchars($col) ?>" style="padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(233,103,43,0.3); border-radius: 8px; color: white; font-family: var(--font-main); min-height: 80px;"><?= htmlspecialchars($editData[$col] ?? '') ?></textarea>
+                                    <?php else: ?>
+                                        <input type="text" name="<?= htmlspecialchars($col) ?>" value="<?= htmlspecialchars($editData[$col] ?? '') ?>" style="padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(233,103,43,0.3); border-radius: 8px; color: white; font-family: var(--font-main);">
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div style="margin-top: 16px; display: flex; gap: 12px;">
+                            <button type="submit" style="padding: 10px 24px; background: var(--accent-orange); color: #fff; border: none; border-radius: 40px; cursor: pointer; font-weight: 600;">Сохранить изменения</button>
+                            <a href="admin.php?table=<?= $table ?>" style="padding: 10px 24px; background: transparent; border: 1px solid var(--text-gray); color: var(--text-gray); border-radius: 40px; text-decoration: none;">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+                <?php endif; ?>
+
+            <?php endif; ?>
+
         </div>
     </div>
 </main>
 
-<!-- ФУТЕР -->
+<!-- Футер -->
 <footer class="footer">
     <div class="container footer-inner">
         <img src="images/logo.png" alt="HistoRIZZ" class="footer-logo">
@@ -200,202 +558,5 @@ if ($result) {
         </div>
     </div>
 </footer>
-
-<!-- модальные окна регистрации и авторизации -->
-<?php include 'login_reg_modal.php'; ?>
-
-<!-- модальное окно викторин -->
-<div id="quizModalOverlay" class="modal-overlay">
-    <div class="modal" style="width: 700px; max-width: 95%;">
-        <span class="modal-close">&times;</span>
-        <button class="modal-save" id="saveQuizBtn" title="Сохранить викторину">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-            </svg>
-        </button>
-        <div id="quizModalBody"></div>
-    </div>
-</div>
-
-
-<!--  МОДАЛЬНОЕ ОКНО ДЛЯ РЕДАКТИРОВАНИЯ ПОЛЬЗОВАТЕЛЯ  -->
-<div id="editUserModal" class="modal-overlay">
-    <div class="modal" style="max-width: 500px;">
-        <span class="modal-close">&times;</span>
-        <h2>Редактирование пользователя</h2>
-        <form id="editUserForm">
-            <input type="hidden" name="user_id" id="editUserId">
-            <div class="modal-field">
-                <label>Имя</label>
-                <input type="text" name="name" id="editName" required>
-            </div>
-            <div class="modal-field">
-                <label>Фамилия</label>
-                <input type="text" name="surname" id="editSurname" required>
-            </div>
-            <div class="modal-field">
-                <label>Email</label>
-                <input type="email" name="email" id="editEmail" required>
-            </div>
-            <div class="modal-field">
-                <label>Телефон</label>
-                <input type="tel" name="phone" id="editPhone" placeholder="+7 (999) 123-45-67">
-            </div>
-            <div class="modal-field">
-                <label>Роль</label>
-                <select name="role" id="editRole">
-                    <option value="user">Пользователь</option>
-                    <option value="admin">Администратор</option>
-                </select>
-            </div>
-            <button type="submit" class="modal-btn">Сохранить</button>
-        </form>
-    </div>
-</div>
-
-<script>
-$(document).ready(function() {
-    // ОБРАБОТЧИК КЛИКОВ ПО ПУНКТАМ МЕНЮ
-    $('.menu-item').on('click', function(e) {
-        e.preventDefault();
-        var page = $(this).data('page');
-        var pageNames = {
-            'users': 'Пользователи',
-            'periods': 'Периоды',
-            'personalities': 'Личности',
-            'quizzes': 'Викторины'
-        };
-        var pageName = pageNames[page] || page;
-        alert('Страница "' + pageName + '" будет добавлена позже, погоди');
-    });
-
-    // РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ
-    $(document).on('click', '.edit-btn', function(e) {
-        e.preventDefault();
-        var userId = $(this).data('id');
-        var $row = $(this).closest('tr');
-        var fullName = $row.find('.user-name').text().trim().split(' ');
-        var userEmail = $row.find('.user-email').text().trim();
-        var userPhone = $row.find('.user-phone').text().trim() || '';
-        
-        // поля формы
-        $('#editUserId').val(userId);
-        $('#editName').val(fullName[0] || '');
-        var surnameParts = fullName.slice(1).join(' ');
-        $('#editSurname').val(surnameParts || '');
-        $('#editEmail').val(userEmail);
-        $('#editPhone').val(userPhone);
-        
-        // модальное окно
-        $('#editUserModal').addClass('active');
-    });
-
-    // СОХРАНЕНИЕ ИЗМЕНЕНИЙ ПОЛЬЗОВАТЕЛЯ
-    $('#editUserForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        var userId = $('#editUserId').val();
-        var name = $('#editName').val().trim();
-        var surname = $('#editSurname').val().trim();
-        var email = $('#editEmail').val().trim();
-        var phone = $('#editPhone').val().trim();
-        var role = $('#editRole').val();
-        
-        if (!name || !surname || !email) {
-            alert('Заполните все поля');
-            return;
-        }
-        
-        $.ajax({
-            url: 'ajax_update_user.php',
-            type: 'POST',
-            data: {
-                user_id: userId,
-                name: name,
-                surname: surname,
-                email: email,
-                phone: phone,
-                role: role
-            },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    // обновленние данных в таблице
-                    var $row = $('tr[data-user-id="' + userId + '"]');
-                    $row.find('.user-name').text(name + ' ' + surname);
-                    $row.find('.user-email').text(email);
-                    if ($row.find('.user-phone').length) {
-                        $row.find('.user-phone').text(phone || '—');
-                    }
-                    
-                    $('#editUserModal').removeClass('active');
-                    alert('Пользователь обновлён!');
-                } else {
-                    alert(response.error || 'Ошибка обновления');
-                }
-            },
-            error: function(xhr) {
-                alert('Ошибка соединения: ' + xhr.responseText);
-            }
-        });
-    });
-
-    // УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
-    $(document).on('click', '.delete-btn', function(e) {
-        e.preventDefault();
-        var userId = $(this).data('id');
-        var userName = $(this).closest('tr').find('.user-name').text();
-        
-        // Проверка, чтобы случайно не удалить
-        if (!confirm('Вы уверены, что хотите удалить пользователя "' + userName + '"? Это действие нельзя отменить.')) {
-            return;
-        }
-        
-        $.ajax({
-            url: 'ajax_delete_user.php',
-            type: 'POST',
-            data: { user_id: userId },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    $('tr[data-user-id="' + userId + '"]').fadeOut(300, function() {
-                        $(this).remove();
-                        // Если таблица пуста, сообщение
-                        if ($('#usersTableBody tr').length === 0) {
-                            $('#usersTableBody').html('<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">Пользователи не найдены</td></tr>');
-                        }
-                    });
-                    alert('Пользователь удалён!');
-                } else {
-                    alert(response.error || 'Ошибка удаления');
-                }
-            },
-            error: function(xhr) {
-                alert('Ошибка соединения: ' + xhr.responseText);
-            }
-        });
-    });
-
-    // ЗАКРЫТИЕ МОДАЛЬНЫХ ОКОН    
-    // Закрытие по клику на крестик
-    $('.modal-close').click(function(e) {
-        e.stopPropagation();
-        $(this).closest('.modal-overlay').removeClass('active');
-    });
-
-    // Закрытие по клику на фон (overlay)
-    $('.modal-overlay').click(function(e) {
-        if (e.target === this) {
-            $(this).removeClass('active');
-        }
-    });
-
-    // Предотвращаю закрытие при клике на содержимое модалки
-    $('.modal').click(function(e) {
-        e.stopPropagation();
-    });
-});
-</script>
-
 </body>
 </html>
